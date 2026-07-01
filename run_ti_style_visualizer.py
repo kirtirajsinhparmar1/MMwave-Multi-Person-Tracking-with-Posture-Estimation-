@@ -10,7 +10,12 @@ from __future__ import annotations
 import argparse
 import atexit
 import os
+import subprocess
 import sys
+import time
+from collections import deque
+from datetime import datetime
+from types import MethodType
 from pathlib import Path
 
 
@@ -37,6 +42,12 @@ DEFAULT_POSE_MODEL = (
     / "ti_4class_clean_recording_robust_1600_fast"
     / "ti_pose_model.onnx"
 )
+DEFAULT_RGB_REPO = (
+    REPO_ROOT
+    / "RGB Posture Estmation"
+    / "Human-Falling-Detect-Tracks"
+)
+DEFAULT_LOG_ROOT = REPO_ROOT / "logs"
 
 
 def parse_args() -> argparse.Namespace:
@@ -78,6 +89,136 @@ def parse_args() -> argparse.Namespace:
         "--demo",
         action="store_true",
         help="Launch UI without hardware auto-start. Synthetic frames are not implemented.",
+    )
+    parser.add_argument(
+        "--enable-rgb-panel",
+        action="store_true",
+        help="Add a live RGB camera panel beside the TI People Tracking view.",
+    )
+    parser.add_argument(
+        "--rgb-source",
+        default="0",
+        help="OpenCV camera index or video path for the RGB panel.",
+    )
+    parser.add_argument(
+        "--rgb-camera-backend",
+        choices=("auto", "dshow", "msmf", "v4l2"),
+        default="auto",
+        help="OpenCV VideoCapture backend for camera sources.",
+    )
+    parser.add_argument(
+        "--rgb-width",
+        type=int,
+        default=640,
+        help="Requested RGB camera capture width.",
+    )
+    parser.add_argument(
+        "--rgb-height",
+        type=int,
+        default=480,
+        help="Requested RGB camera capture height.",
+    )
+    parser.add_argument(
+        "--rgb-fps",
+        type=float,
+        default=30,
+        help="Requested RGB camera frame rate.",
+    )
+    parser.add_argument(
+        "--rgb-mirror",
+        action="store_true",
+        help="Mirror RGB camera frames horizontally.",
+    )
+    parser.add_argument(
+        "--enable-rgb-posture",
+        action="store_true",
+        help="Run the RGB detector/pose/tracker/action overlay inside the RGB panel.",
+    )
+    parser.add_argument(
+        "--rgb-repo",
+        default=str(DEFAULT_RGB_REPO),
+        help="Path to the Human-Falling-Detect-Tracks RGB repo.",
+    )
+    parser.add_argument(
+        "--rgb-device",
+        choices=("auto", "cpu", "cuda"),
+        default="auto",
+        help="Torch device for RGB posture inference.",
+    )
+    parser.add_argument(
+        "--rgb-detection-input-size",
+        type=int,
+        default=384,
+        help="YOLO detector square input size; must be divisible by 32.",
+    )
+    parser.add_argument(
+        "--rgb-pose-input-size",
+        default="224x160",
+        help="FastPose input size as HEIGHTxWIDTH; each value must be divisible by 32.",
+    )
+    parser.add_argument(
+        "--rgb-pose-backbone",
+        choices=("res50", "res101"),
+        default="res50",
+        help="FastPose backbone for RGB posture mode.",
+    )
+    parser.add_argument(
+        "--rgb-show-skeleton",
+        action="store_true",
+        help="Draw tracked pose skeletons in RGB posture mode.",
+    )
+    parser.add_argument(
+        "--rgb-show-detected",
+        action="store_true",
+        help="Draw raw detector boxes in RGB posture mode.",
+    )
+    parser.add_argument(
+        "--rgb-no-action",
+        action="store_true",
+        help="Skip TSSTG action recognition in RGB posture mode.",
+    )
+    parser.add_argument(
+        "--combined-session",
+        action="store_true",
+        help=(
+            "Enable the normal combined experiment mode: RGB panel, RGB posture, "
+            "combined logging, and combined status panel."
+        ),
+    )
+    parser.add_argument(
+        "--session-id",
+        default=None,
+        help="Optional combined experiment session id. Defaults to session_YYYYMMDD_HHMMSS.",
+    )
+    parser.add_argument(
+        "--log-root",
+        default=str(DEFAULT_LOG_ROOT),
+        help="Root directory for combined session logs. Defaults to ../logs.",
+    )
+    parser.add_argument(
+        "--combined-log",
+        action="store_true",
+        help="Enable structured multimodal logging for mmWave and RGB outputs.",
+    )
+    parser.add_argument(
+        "--combined-status-panel",
+        action="store_true",
+        help="Show a simple live mmWave/RGB summary under the RGB panel.",
+    )
+    parser.add_argument(
+        "--rgb-log-keypoints",
+        action="store_true",
+        help="Log one RGB keypoint row per joint per track.",
+    )
+    parser.add_argument(
+        "--rgb-log-frames",
+        action="store_true",
+        help="Create an RGB annotated frame folder; image saving is not implemented yet.",
+    )
+    parser.add_argument(
+        "--mmwave-log-points",
+        action="store_true",
+        help="Log mmWave point-cloud rows in combined sessions.",
     )
     parser.add_argument(
         "--enable-pose",
@@ -331,14 +472,38 @@ def parse_args() -> argparse.Namespace:
         "--pose-falling-stability-frames",
         dest="pose_fall_stability_frames",
         type=int,
-        default=6,
+        default=4,
         help="Display-stability frames required for high-confidence FALLING.",
+    )
+    parser.add_argument(
+        "--pose-standing-stability-frames",
+        type=int,
+        default=12,
+        help="Display-stability frames required for STANDING.",
     )
     parser.add_argument(
         "--pose-sitting-stability-frames",
         type=int,
         default=8,
         help="Display-stability frames required for SITTING.",
+    )
+    parser.add_argument(
+        "--pose-lying-stability-frames",
+        type=int,
+        default=14,
+        help="Display-stability frames required for LYING.",
+    )
+    parser.add_argument(
+        "--pose-moving-stability-frames",
+        type=int,
+        default=4,
+        help="Display-stability frames required for MOVING.",
+    )
+    parser.add_argument(
+        "--pose-unknown-stability-frames",
+        type=int,
+        default=6,
+        help="Display-stability frames required for UNKNOWN.",
     )
     parser.add_argument(
         "--pose-sitting-stability-ratio",
@@ -349,7 +514,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--pose-sitting-min-confidence",
         type=float,
-        default=0.40,
+        default=0.45,
         help="Minimum confidence for SITTING display updates.",
     )
     parser.add_argument(
@@ -359,23 +524,754 @@ def parse_args() -> argparse.Namespace:
         help="Maximum horizontal speed in m/s for accepting SITTING.",
     )
     parser.add_argument(
+        "--pose-stand-to-sit-min-confidence",
+        type=float,
+        default=0.65,
+        help="Minimum SITTING confidence required before displayed STANDING can switch to SITTING.",
+    )
+    parser.add_argument(
+        "--pose-stand-to-sit-margin",
+        type=float,
+        default=0.15,
+        help="Minimum SITTING minus STANDING probability margin required for STANDING to SITTING.",
+    )
+    parser.add_argument(
+        "--pose-stand-to-sit-frames",
+        type=int,
+        default=12,
+        help="Consecutive gated SITTING frames required before displayed STANDING switches to SITTING.",
+    )
+    parser.add_argument(
+        "--pose-stand-to-sit-allow-target-only",
+        action="store_true",
+        default=False,
+        help="Allow target-only or NO_POINTS evidence to switch displayed STANDING to SITTING.",
+    )
+    parser.add_argument(
+        "--pose-sit-to-stand-recovery-margin",
+        type=float,
+        default=0.10,
+        help="Minimum STANDING minus SITTING probability margin for SITTING lock recovery.",
+    )
+    parser.add_argument(
+        "--pose-sit-to-stand-recovery-frames",
+        type=int,
+        default=6,
+        help="Consecutive STANDING-favoring frames required to recover from displayed SITTING.",
+    )
+    parser.add_argument(
         "--pose-standing-min-confidence",
         type=float,
-        default=0.50,
+        default=0.70,
         help="Minimum confidence for STANDING display updates.",
     )
     parser.add_argument(
         "--pose-lying-min-confidence",
         type=float,
-        default=0.50,
+        default=0.60,
         help="Minimum confidence for LYING display updates.",
     )
-    return parser.parse_args()
+    parser.add_argument(
+        "--pose-falling-min-confidence",
+        type=float,
+        default=0.70,
+        help="Minimum confidence for FALLING display updates.",
+    )
+    parser.add_argument(
+        "--pose-moving-min-confidence",
+        type=float,
+        default=0.35,
+        help="Minimum confidence for MOVING display updates.",
+    )
+    parser.add_argument(
+        "--pose-range-near-max",
+        type=float,
+        default=2.0,
+        help="Maximum target range in meters for near stand/sit calibration.",
+    )
+    parser.add_argument(
+        "--pose-range-mid-max",
+        type=float,
+        default=4.0,
+        help="Maximum target range in meters for mid stand/sit calibration; farther targets use far.",
+    )
+    parser.add_argument(
+        "--pose-stand-sit-near-margin",
+        type=float,
+        default=0.06,
+        help="Standing/sitting probability margin required at near range.",
+    )
+    parser.add_argument(
+        "--pose-stand-sit-mid-margin",
+        type=float,
+        default=0.10,
+        help="Standing/sitting probability margin required at mid range.",
+    )
+    parser.add_argument(
+        "--pose-stand-sit-far-margin",
+        type=float,
+        default=0.15,
+        help="Standing/sitting probability margin required at far range.",
+    )
+    parser.add_argument(
+        "--pose-stand-to-sit-near-frames",
+        type=int,
+        default=6,
+        help="Stable frames required for STANDING to SITTING at near range.",
+    )
+    parser.add_argument(
+        "--pose-stand-to-sit-mid-frames",
+        type=int,
+        default=8,
+        help="Stable frames required for STANDING to SITTING at mid range.",
+    )
+    parser.add_argument(
+        "--pose-stand-to-sit-far-frames",
+        type=int,
+        default=12,
+        help="Stable frames required for STANDING to SITTING at far range.",
+    )
+    parser.add_argument(
+        "--pose-sit-to-stand-near-frames",
+        type=int,
+        default=8,
+        help="Stable frames required for SITTING to STANDING at near range.",
+    )
+    parser.add_argument(
+        "--pose-sit-to-stand-mid-frames",
+        type=int,
+        default=10,
+        help="Stable frames required for SITTING to STANDING at mid range.",
+    )
+    parser.add_argument(
+        "--pose-sit-to-stand-far-frames",
+        type=int,
+        default=14,
+        help="Stable frames required for SITTING to STANDING at far range.",
+    )
+    parser.add_argument(
+        "--pose-moving-override-near-frames",
+        type=int,
+        default=3,
+        help="Consecutive motion frames required before MOVING overrides stand/sit at near range.",
+    )
+    parser.add_argument(
+        "--pose-moving-override-mid-frames",
+        type=int,
+        default=4,
+        help="Consecutive motion frames required before MOVING overrides stand/sit at mid range.",
+    )
+    parser.add_argument(
+        "--pose-moving-override-far-frames",
+        type=int,
+        default=5,
+        help="Consecutive motion frames required before MOVING overrides stand/sit at far range.",
+    )
+    parser.add_argument(
+        "--pose-strong-stand-sit-near-margin",
+        type=float,
+        default=0.12,
+        help="Strong stand/sit margin at near range; blocks speed-only MOVING override.",
+    )
+    parser.add_argument(
+        "--pose-strong-stand-sit-mid-margin",
+        type=float,
+        default=0.18,
+        help="Strong stand/sit margin at mid range; blocks speed-only MOVING override.",
+    )
+    parser.add_argument(
+        "--pose-strong-stand-sit-far-margin",
+        type=float,
+        default=0.25,
+        help="Strong stand/sit margin at far range; blocks speed-only MOVING override.",
+    )
+    parser.add_argument(
+        "--pose-moving-require-translation",
+        dest="pose_moving_require_translation",
+        action="store_true",
+        default=True,
+        help="Require translation evidence before MOVING overrides strong stand/sit.",
+    )
+    parser.add_argument(
+        "--no-pose-moving-require-translation",
+        dest="pose_moving_require_translation",
+        action="store_false",
+        help="Allow sustained speed-only MOVING override for strong stand/sit.",
+    )
+    parser.add_argument(
+        "--pose-moving-translation-window",
+        type=int,
+        default=8,
+        help="History window for translation-confirmed MOVING override.",
+    )
+    parser.add_argument(
+        "--pose-moving-translation-min-m",
+        type=float,
+        default=0.25,
+        help="Minimum displacement in meters for translation-confirmed MOVING override.",
+    )
+    parser.add_argument(
+        "--pose-sensor-height-m",
+        type=float,
+        default=1.25,
+        help="Sensor mount height used for opt-in pose calibration debug values.",
+    )
+    parser.add_argument(
+        "--pose-sensor-pitch-deg",
+        type=float,
+        default=0.0,
+        help="Sensor pitch in degrees for opt-in pose calibration debug values.",
+    )
+    parser.add_argument(
+        "--pose-sensor-roll-deg",
+        type=float,
+        default=0.0,
+        help="Sensor roll in degrees for opt-in pose calibration debug values.",
+    )
+    parser.add_argument(
+        "--pose-sensor-yaw-deg",
+        type=float,
+        default=0.0,
+        help="Sensor yaw in degrees for opt-in pose calibration debug values.",
+    )
+    parser.add_argument(
+        "--pose-use-sensor-calibration",
+        action="store_true",
+        help="Use sensor calibration for logged calibrated/floor-relative pose geometry.",
+    )
+    parser.add_argument(
+        "--pose-floor-z-m",
+        type=float,
+        default=0.0,
+        help="Floor z in calibrated pose coordinates.",
+    )
+    parser.add_argument(
+        "--pose-assoc-debug",
+        action="store_true",
+        help="Print throttled point-association diagnostics.",
+    )
+    parser.add_argument(
+        "--pose-assoc-method",
+        choices=("auto", "target_index", "nearest", "hybrid"),
+        default="auto",
+        help="Point association method for pose features and geometry.",
+    )
+    parser.add_argument(
+        "--pose-assoc-nearest-radius-m",
+        type=float,
+        default=0.75,
+        help="Nearest-neighbor association radius in meters.",
+    )
+    parser.add_argument(
+        "--pose-assoc-nearest-z-min",
+        type=float,
+        default=-0.5,
+        help="Minimum z for nearest-neighbor association.",
+    )
+    parser.add_argument(
+        "--pose-assoc-nearest-z-max",
+        type=float,
+        default=2.5,
+        help="Maximum z for nearest-neighbor association.",
+    )
+    parser.add_argument(
+        "--pose-assoc-min-points-good",
+        type=int,
+        default=3,
+        help="Associated point count considered good for geometry diagnostics.",
+    )
+    parser.add_argument(
+        "--pose-use-standing-baseline",
+        action="store_true",
+        help="Enable per-TID standing baseline for upright sitting drop logic.",
+    )
+    parser.add_argument(
+        "--pose-standing-baseline-min-frames",
+        type=int,
+        default=20,
+        help="Stable standing frames required before sitting-drop baseline is ready.",
+    )
+    parser.add_argument(
+        "--pose-sitting-drop-near-m",
+        type=float,
+        default=0.20,
+        help="Near-range geometry drop threshold for upright sitting.",
+    )
+    parser.add_argument(
+        "--pose-sitting-drop-mid-m",
+        type=float,
+        default=0.25,
+        help="Mid-range geometry drop threshold for upright sitting.",
+    )
+    parser.add_argument(
+        "--pose-sitting-drop-far-m",
+        type=float,
+        default=0.35,
+        help="Far-range geometry drop threshold for upright sitting.",
+    )
+    parser.add_argument(
+        "--pose-sitting-drop-min-sit-prob",
+        type=float,
+        default=0.30,
+        help="Minimum sitting probability for geometry-supported sitting.",
+    )
+    parser.add_argument(
+        "--pose-sitting-drop-centroid-m",
+        type=float,
+        default=0.25,
+        help="Centroid drop threshold for geometry-supported sitting.",
+    )
+    parser.add_argument(
+        "--pose-sitting-drop-top-m",
+        type=float,
+        default=0.25,
+        help="Top-height drop threshold for geometry-supported sitting.",
+    )
+    parser.add_argument(
+        "--pose-sitting-drop-target-z-m",
+        type=float,
+        default=0.20,
+        help="Target-z fallback drop threshold for geometry-supported sitting.",
+    )
+    args = parser.parse_args()
+    if args.combined_session:
+        args.enable_rgb_panel = True
+        args.enable_rgb_posture = True
+        args.combined_log = True
+        args.combined_status_panel = True
+    if args.enable_rgb_posture and not args.enable_rgb_panel:
+        print(
+            "[ti-style-warning] --enable-rgb-posture requires --enable-rgb-panel; "
+            "enabling the RGB panel.",
+            flush=True,
+        )
+        args.enable_rgb_panel = True
+    if (args.combined_log or args.combined_status_panel) and args.session_id is None:
+        args.session_id = datetime.now().strftime("session_%Y%m%d_%H%M%S")
+    return args
 
 
 def debug_print(enabled: bool, message: str) -> None:
     if enabled:
         print(f"[ti-style-debug] {message}", flush=True)
+
+
+def combined_print(message: str) -> None:
+    print(f"[COMBINED] {message}", flush=True)
+
+
+def combined_error(message: str) -> None:
+    print(f"[COMBINED][ERROR] {message}", flush=True)
+
+
+def wall_time_iso() -> str:
+    return datetime.now().astimezone().isoformat(timespec="milliseconds")
+
+
+def resolve_log_root(value: str | Path) -> Path:
+    path = Path(value).expanduser()
+    if path.is_absolute():
+        return path.resolve()
+    return (PROJECT_DIR / path).resolve()
+
+
+def git_info(path: Path) -> dict[str, object]:
+    info = {"commit": None, "branch": None, "dirty": None, "error": None}
+    try:
+        commit = subprocess.run(
+            ["git", "-C", str(path), "rev-parse", "HEAD"],
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+        branch = subprocess.run(
+            ["git", "-C", str(path), "branch", "--show-current"],
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+        status = subprocess.run(
+            ["git", "-C", str(path), "status", "--short"],
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+        info.update({"commit": commit or None, "branch": branch or None, "dirty": bool(status)})
+    except Exception as exc:
+        info["error"] = str(exc)
+    return info
+
+
+def create_combined_logger(args: argparse.Namespace, debug: bool):
+    if not args.combined_log:
+        return None
+
+    try:
+        from combined_session_logger import CombinedSessionLogger
+
+        log_root = resolve_log_root(args.log_root)
+        combined_print(f"log_root={log_root} session_id={args.session_id}")
+        rgb_repo_path = Path(args.rgb_repo).expanduser()
+        if not rgb_repo_path.is_absolute():
+            rgb_repo_path = (PROJECT_DIR / rgb_repo_path).resolve()
+        else:
+            rgb_repo_path = rgb_repo_path.resolve()
+
+        mmwave_git = git_info(PROJECT_DIR)
+        rgb_git = git_info(rgb_repo_path)
+        metadata = {
+            "session_id": args.session_id,
+            "created_wall_time_iso": wall_time_iso(),
+            "created_monotonic_ns": time.monotonic_ns(),
+            "workspace_root": str(REPO_ROOT),
+            "mmwave_repo_path": str(PROJECT_DIR),
+            "mmwave_git_commit": mmwave_git["commit"],
+            "mmwave_git_branch": mmwave_git["branch"],
+            "mmwave_git_dirty": mmwave_git["dirty"],
+            "rgb_repo_path": str(rgb_repo_path),
+            "rgb_git_commit": rgb_git["commit"],
+            "rgb_git_branch": rgb_git["branch"],
+            "rgb_git_dirty": rgb_git["dirty"],
+            "mmwave_cli_port": args.cli,
+            "mmwave_data_port": args.data,
+            "mmwave_cfg_path": str(resolve_project_path(args.cfg)),
+            "mmwave_pose_enabled": bool(args.enable_pose),
+            "mmwave_human_models_enabled": bool(args.pose_human_models),
+            "rgb_panel_enabled": bool(args.enable_rgb_panel),
+            "rgb_posture_enabled": bool(args.enable_rgb_posture),
+            "rgb_source": str(args.rgb_source),
+            "rgb_device": args.rgb_device,
+            "rgb_camera_backend": args.rgb_camera_backend,
+            "combined_status_panel": bool(args.combined_status_panel),
+            "rgb_log_keypoints": bool(args.rgb_log_keypoints),
+            "rgb_log_frames": bool(args.rgb_log_frames),
+            "mmwave_log_points": bool(args.mmwave_log_points),
+            "notes": "",
+        }
+        logger = CombinedSessionLogger(
+            log_root=log_root,
+            session_id=args.session_id,
+            metadata=metadata,
+            log_rgb_keypoints=args.rgb_log_keypoints,
+            log_mmwave_points=args.mmwave_log_points,
+        )
+        if mmwave_git["error"]:
+            logger.log_event("git_info_unavailable", {"repo": "mmwave", "error": mmwave_git["error"]})
+        if rgb_git["error"]:
+            logger.log_event("git_info_unavailable", {"repo": "rgb", "error": rgb_git["error"]})
+        if args.rgb_log_frames:
+            frames_dir = logger.session_dir / "rgb_annotated_frames"
+            frames_dir.mkdir(parents=True, exist_ok=True)
+            logger.log_event(
+                "rgb_frame_saving_not_implemented",
+                {"directory": str(frames_dir)},
+            )
+        combined_print(f"logger created: {logger.session_dir}")
+        debug_print(debug, f"combined session log directory: {logger.session_dir}")
+        return logger
+    except Exception as exc:
+        args.combined_log = False
+        combined_error(f"logger creation failed; combined logging disabled: {exc}")
+        return None
+
+
+def _rows(value) -> list:
+    if value is None:
+        return []
+    try:
+        return value.tolist()
+    except Exception:
+        try:
+            return list(value)
+        except Exception:
+            return []
+
+
+def _float_at(row, index: int, default=None):
+    try:
+        return float(row[index])
+    except Exception:
+        return default
+
+
+def _int_at(row, index: int, default=None):
+    value = _float_at(row, index, default)
+    if value is None:
+        return default
+    try:
+        return int(value)
+    except Exception:
+        return default
+
+
+def _height_by_tid(height_data) -> dict[int, dict[str, object]]:
+    result = {}
+    for row in _rows(height_data):
+        tid = _int_at(row, 0)
+        if tid is None:
+            continue
+        max_z = _float_at(row, 1)
+        min_z = _float_at(row, 2)
+        height = None
+        if max_z is not None and min_z is not None:
+            height = max_z - min_z
+        result[tid] = {"height_max_z_m": max_z, "height_min_z_m": min_z, "height_m": height}
+    return result
+
+
+def _associated_point_counts(points) -> dict[int, int]:
+    counts = {}
+    for point in _rows(points):
+        track_index = _int_at(point, 6)
+        if track_index is None or track_index in {253, 254, 255}:
+            continue
+        counts[track_index] = counts.get(track_index, 0) + 1
+    return counts
+
+
+def _pose_probability(probabilities: dict, *names: str):
+    if not isinstance(probabilities, dict):
+        return None
+    lower_map = {str(key).lower(): value for key, value in probabilities.items()}
+    for name in names:
+        value = lower_map.get(name.lower())
+        if value is not None:
+            return value
+    return None
+
+
+def log_mmwave_output(combined_logger, status_panel, output_dict: dict, demo_instance=None) -> None:
+    if not isinstance(output_dict, dict):
+        return
+
+    now_ns = time.monotonic_ns()
+    now_iso = wall_time_iso()
+    frame_num = output_dict.get("frameNum")
+    tracks = _rows(output_dict.get("trackData"))
+    points = _rows(output_dict.get("pointCloud"))
+    heights = _height_by_tid(output_dict.get("heightData"))
+    point_counts = _associated_point_counts(points)
+    error_value = output_dict.get("error", 0)
+    parse_ok = int(error_value or 0) == 0
+
+    if combined_logger is not None:
+        combined_logger.log_mmwave_frame(
+            {
+                "host_wall_time_iso": now_iso,
+                "host_monotonic_ns": now_ns,
+                "source": "mmwave",
+                "mmwave_frame_num": frame_num,
+                "num_tracks": len(tracks),
+                "num_points": len(points),
+                "parse_ok": parse_ok,
+                "error_count": 0 if parse_ok else 1,
+            }
+        )
+    for track in tracks:
+        tid = _int_at(track, 0)
+        height = heights.get(tid, {})
+        if combined_logger is not None:
+            combined_logger.log_mmwave_track(
+                {
+                    "host_wall_time_iso": now_iso,
+                    "host_monotonic_ns": now_ns,
+                    "source": "mmwave",
+                    "mmwave_frame_num": frame_num,
+                    "tid": tid,
+                    "x_m": _float_at(track, 1),
+                    "y_m": _float_at(track, 2),
+                    "z_m": _float_at(track, 3),
+                    "vx_mps": _float_at(track, 4),
+                    "vy_mps": _float_at(track, 5),
+                    "vz_mps": _float_at(track, 6),
+                    "ax_mps2": _float_at(track, 7),
+                    "ay_mps2": _float_at(track, 8),
+                    "az_mps2": _float_at(track, 9),
+                    "g": _float_at(track, 10),
+                    "confidence": _float_at(track, 11),
+                    "num_associated_points": point_counts.get(tid, 0),
+                    "height_min_z_m": height.get("height_min_z_m"),
+                    "height_max_z_m": height.get("height_max_z_m"),
+                    "height_m": height.get("height_m"),
+                }
+            )
+    if combined_logger is not None and getattr(combined_logger, "log_mmwave_points", False):
+        for point_index, point in enumerate(points):
+            combined_logger.log_mmwave_point(
+                {
+                    "host_wall_time_iso": now_iso,
+                    "host_monotonic_ns": now_ns,
+                    "source": "mmwave",
+                    "mmwave_frame_num": frame_num,
+                    "point_index": point_index,
+                    "track_index": _int_at(point, 6),
+                    "x_m": _float_at(point, 0),
+                    "y_m": _float_at(point, 1),
+                    "z_m": _float_at(point, 2),
+                    "doppler": _float_at(point, 3),
+                    "snr": _float_at(point, 4),
+                    "noise": _float_at(point, 5),
+                }
+            )
+
+    pose_results = getattr(demo_instance, "latestPoseResults", {}) if demo_instance is not None else {}
+    pose_summaries = []
+    if isinstance(pose_results, dict):
+        for tid, pose in pose_results.items():
+            if not isinstance(pose, dict):
+                continue
+            probabilities = pose.get("probabilities", {})
+            final_label = pose.get("final_label")
+            pose_summaries.append(f"TID {tid} {final_label}")
+            if combined_logger is not None:
+                combined_logger.log_mmwave_pose(
+                    {
+                        "host_wall_time_iso": now_iso,
+                        "host_monotonic_ns": now_ns,
+                        "source": "mmwave",
+                        "mmwave_frame_num": frame_num,
+                        "tid": tid,
+                        "window_ready": bool(pose.get("window_ready", False)),
+                        "ml_label": pose.get("smoothed_label") or pose.get("raw_label"),
+                        "ml_confidence": pose.get("smoothed_confidence") or pose.get("raw_confidence"),
+                        "final_label": final_label,
+                        "motion_label": pose.get("motion_state"),
+                        "speed_mps": pose.get("horizontal_speed"),
+                        "height_drop_flag": bool(float(pose.get("height_drop", 0.0) or 0.0) > 0.0),
+                        "quality_flag": pose.get("quality"),
+                        "num_points": pose.get("num_points"),
+                        "prob_standing": _pose_probability(probabilities, "STANDING", "standing"),
+                        "prob_sitting": _pose_probability(probabilities, "SITTING", "sitting"),
+                        "prob_lying": _pose_probability(probabilities, "LYING", "lying", "Lying Down"),
+                        "prob_falling": _pose_probability(probabilities, "FALLING", "falling", "Fall Down"),
+                    }
+                )
+    if status_panel is not None:
+        status_panel.update_mmwave(frame_num, len(tracks), pose_summaries)
+
+
+def log_rgb_result(combined_logger, status_panel, result: dict, log_keypoints: bool) -> None:
+    if not isinstance(result, dict):
+        return
+
+    tracks = result.get("tracks") or []
+    action_count = sum(1 for track in tracks if track.get("action_label"))
+    frame_row = {
+        "host_wall_time_iso": result.get("host_wall_time_iso"),
+        "host_monotonic_ns": result.get("host_monotonic_ns"),
+        "source": result.get("source", "rgb"),
+        "rgb_frame_num": result.get("rgb_frame_num"),
+        "width": result.get("width"),
+        "height": result.get("height"),
+        "fps_estimate": result.get("fps_estimate"),
+        "frame_read_ok": result.get("frame_read_ok"),
+        "num_detections": result.get("num_detections"),
+        "num_tracks": result.get("num_tracks", len(tracks)),
+        "num_actions": result.get("num_actions", action_count),
+        "error_count": len(result.get("errors") or []),
+    }
+    if combined_logger is not None:
+        combined_logger.log_rgb_frame(frame_row)
+
+    action_summaries = []
+    for track in tracks:
+        track_row = {
+            "host_wall_time_iso": result.get("host_wall_time_iso"),
+            "host_monotonic_ns": result.get("host_monotonic_ns"),
+            "source": result.get("source", "rgb"),
+            "rgb_frame_num": result.get("rgb_frame_num"),
+            "rgb_track_id": track.get("rgb_track_id"),
+            "bbox_x1_px": track.get("bbox_x1_px"),
+            "bbox_y1_px": track.get("bbox_y1_px"),
+            "bbox_x2_px": track.get("bbox_x2_px"),
+            "bbox_y2_px": track.get("bbox_y2_px"),
+            "bbox_confidence": track.get("bbox_confidence"),
+            "pose_confidence": track.get("pose_confidence"),
+            "tracker_state": track.get("tracker_state"),
+            "track_age": track.get("track_age"),
+            "time_since_update": track.get("time_since_update"),
+            "action_window_ready": track.get("action_window_ready"),
+            "action_label": track.get("action_label"),
+            "action_confidence": track.get("action_confidence"),
+        }
+        if combined_logger is not None:
+            combined_logger.log_rgb_track(track_row)
+        if track.get("action_label"):
+            action_summaries.append(f"ID {track.get('rgb_track_id')} {track.get('action_label')}")
+            probs = track.get("action_probs") or {}
+            if combined_logger is not None:
+                combined_logger.log_rgb_action(
+                    {
+                        "host_wall_time_iso": result.get("host_wall_time_iso"),
+                        "host_monotonic_ns": result.get("host_monotonic_ns"),
+                        "source": result.get("source", "rgb"),
+                        "rgb_frame_num": result.get("rgb_frame_num"),
+                        "rgb_track_id": track.get("rgb_track_id"),
+                        "action_window_ready": track.get("action_window_ready"),
+                        "action_label": track.get("action_label"),
+                        "action_confidence": track.get("action_confidence"),
+                        "prob_standing": probs.get("Standing"),
+                        "prob_walking": probs.get("Walking"),
+                        "prob_sitting": probs.get("Sitting"),
+                        "prob_lying_down": probs.get("Lying Down"),
+                        "prob_stand_up": probs.get("Stand up"),
+                        "prob_sit_down": probs.get("Sit down"),
+                        "prob_fall_down": probs.get("Fall Down"),
+                    }
+                )
+        if combined_logger is not None and log_keypoints:
+            for keypoint in track.get("keypoints") or []:
+                keypoint_row = {
+                    "host_wall_time_iso": result.get("host_wall_time_iso"),
+                    "host_monotonic_ns": result.get("host_monotonic_ns"),
+                    "source": result.get("source", "rgb"),
+                    "rgb_frame_num": result.get("rgb_frame_num"),
+                    "rgb_track_id": track.get("rgb_track_id"),
+                }
+                keypoint_row.update(keypoint)
+                combined_logger.log_rgb_keypoint(keypoint_row)
+    if status_panel is not None:
+        status_panel.update_rgb(result.get("rgb_frame_num"), len(tracks), action_summaries)
+
+
+class CombinedStatusPanel:
+    def __init__(self, widget) -> None:
+        self.widget = widget
+        self.mmwave_text = "Latest mmWave:\n  frame: -\n  tracks: 0\n  poses: -"
+        self.rgb_text = "Latest RGB:\n  frame: -\n  tracks: 0\n  actions: -"
+        self._last_render_ns = 0
+        self._render_interval_ns = 250_000_000
+        self.render()
+
+    def update_mmwave(self, frame_num, tracks_count: int, pose_summaries: list[str]) -> None:
+        poses = ", ".join(pose_summaries[:6]) if pose_summaries else "-"
+        self.mmwave_text = (
+            "Latest mmWave:\n"
+            f"  frame: {frame_num if frame_num is not None else '-'}\n"
+            f"  tracks: {tracks_count}\n"
+            f"  poses: {poses}"
+        )
+        self.render()
+
+    def update_rgb(self, frame_num, tracks_count: int, action_summaries: list[str]) -> None:
+        actions = ", ".join(action_summaries[:6]) if action_summaries else "-"
+        self.rgb_text = (
+            "Latest RGB:\n"
+            f"  frame: {frame_num if frame_num is not None else '-'}\n"
+            f"  tracks: {tracks_count}\n"
+            f"  actions: {actions}"
+        )
+        self.render()
+
+    def render(self) -> None:
+        now_ns = time.monotonic_ns()
+        if self._last_render_ns and now_ns - self._last_render_ns < self._render_interval_ns:
+            return
+        try:
+            self.widget.setPlainText(self.mmwave_text + "\n\n" + self.rgb_text)
+            self._last_render_ns = now_ns
+        except Exception as exc:
+            combined_error(f"status panel update failed: {exc}")
 
 
 def add_import_paths(debug: bool) -> list[Path]:
@@ -684,12 +1580,65 @@ def create_pose_manager_before_qt(args: argparse.Namespace, debug: bool):
             display_stability_ratio=args.pose_display_stability_ratio,
             falling_fast_update=args.pose_falling_fast_update,
             fall_stability_frames=args.pose_fall_stability_frames,
+            standing_stability_frames=args.pose_standing_stability_frames,
             sitting_stability_frames=args.pose_sitting_stability_frames,
+            lying_stability_frames=args.pose_lying_stability_frames,
+            moving_stability_frames=args.pose_moving_stability_frames,
+            unknown_stability_frames=args.pose_unknown_stability_frames,
             sitting_stability_ratio=args.pose_sitting_stability_ratio,
             sitting_min_confidence=args.pose_sitting_min_confidence,
             sitting_max_speed=args.pose_sitting_max_speed,
             standing_min_confidence=args.pose_standing_min_confidence,
             lying_min_confidence=args.pose_lying_min_confidence,
+            falling_min_confidence=args.pose_falling_min_confidence,
+            moving_min_confidence=args.pose_moving_min_confidence,
+            range_near_max=args.pose_range_near_max,
+            range_mid_max=args.pose_range_mid_max,
+            stand_sit_near_margin=args.pose_stand_sit_near_margin,
+            stand_sit_mid_margin=args.pose_stand_sit_mid_margin,
+            stand_sit_far_margin=args.pose_stand_sit_far_margin,
+            stand_to_sit_near_frames=args.pose_stand_to_sit_near_frames,
+            stand_to_sit_mid_frames=args.pose_stand_to_sit_mid_frames,
+            stand_to_sit_far_frames=args.pose_stand_to_sit_far_frames,
+            sit_to_stand_near_frames=args.pose_sit_to_stand_near_frames,
+            sit_to_stand_mid_frames=args.pose_sit_to_stand_mid_frames,
+            sit_to_stand_far_frames=args.pose_sit_to_stand_far_frames,
+            moving_override_near_frames=args.pose_moving_override_near_frames,
+            moving_override_mid_frames=args.pose_moving_override_mid_frames,
+            moving_override_far_frames=args.pose_moving_override_far_frames,
+            strong_stand_sit_near_margin=args.pose_strong_stand_sit_near_margin,
+            strong_stand_sit_mid_margin=args.pose_strong_stand_sit_mid_margin,
+            strong_stand_sit_far_margin=args.pose_strong_stand_sit_far_margin,
+            moving_require_translation=args.pose_moving_require_translation,
+            moving_translation_window=args.pose_moving_translation_window,
+            moving_translation_min_m=args.pose_moving_translation_min_m,
+            sensor_height_m=args.pose_sensor_height_m,
+            sensor_pitch_deg=args.pose_sensor_pitch_deg,
+            sensor_roll_deg=args.pose_sensor_roll_deg,
+            sensor_yaw_deg=args.pose_sensor_yaw_deg,
+            use_sensor_calibration=args.pose_use_sensor_calibration,
+            floor_z_m=args.pose_floor_z_m,
+            assoc_debug=args.pose_assoc_debug,
+            assoc_method=args.pose_assoc_method,
+            assoc_nearest_radius_m=args.pose_assoc_nearest_radius_m,
+            assoc_nearest_z_min=args.pose_assoc_nearest_z_min,
+            assoc_nearest_z_max=args.pose_assoc_nearest_z_max,
+            assoc_min_points_good=args.pose_assoc_min_points_good,
+            use_standing_baseline=args.pose_use_standing_baseline,
+            standing_baseline_min_frames=args.pose_standing_baseline_min_frames,
+            sitting_drop_near_m=args.pose_sitting_drop_near_m,
+            sitting_drop_mid_m=args.pose_sitting_drop_mid_m,
+            sitting_drop_far_m=args.pose_sitting_drop_far_m,
+            sitting_drop_min_sit_prob=args.pose_sitting_drop_min_sit_prob,
+            sitting_drop_centroid_m=args.pose_sitting_drop_centroid_m,
+            sitting_drop_top_m=args.pose_sitting_drop_top_m,
+            sitting_drop_target_z_m=args.pose_sitting_drop_target_z_m,
+            stand_to_sit_min_confidence=args.pose_stand_to_sit_min_confidence,
+            stand_to_sit_margin=args.pose_stand_to_sit_margin,
+            stand_to_sit_frames=args.pose_stand_to_sit_frames,
+            stand_to_sit_allow_target_only=args.pose_stand_to_sit_allow_target_only,
+            sit_to_stand_recovery_margin=args.pose_sit_to_stand_recovery_margin,
+            sit_to_stand_recovery_frames=args.pose_sit_to_stand_recovery_frames,
             ground_z=args.pose_ground_z,
             human_model_target_height=args.pose_human_model_target_height,
             human_model_target_sitting_height=args.pose_human_model_target_sitting_height,
@@ -784,6 +1733,166 @@ def attach_pose_manager(window, pose_manager, args: argparse.Namespace, debug: b
     return pose_manager
 
 
+def attach_rgb_panel(window, args: argparse.Namespace, debug: bool):
+    if not args.enable_rgb_panel:
+        debug_print(debug, "RGB panel disabled")
+        return None
+
+    from PySide2.QtCore import Qt
+    from PySide2.QtWidgets import QSplitter
+
+    from rgb_camera_panel import RgbCameraPanel
+
+    panel = RgbCameraPanel(
+        source=args.rgb_source,
+        backend=args.rgb_camera_backend,
+        width=args.rgb_width,
+        height=args.rgb_height,
+        fps=args.rgb_fps,
+        mirror=args.rgb_mirror,
+        posture_enabled=args.enable_rgb_posture,
+        rgb_repo=args.rgb_repo,
+        device=args.rgb_device,
+        detection_input_size=args.rgb_detection_input_size,
+        pose_input_size=args.rgb_pose_input_size,
+        pose_backbone=args.rgb_pose_backbone,
+        show_skeleton=args.rgb_show_skeleton,
+        show_detected=args.rgb_show_detected,
+        no_action=args.rgb_no_action,
+    )
+    splitter = QSplitter(Qt.Horizontal)
+    window.gridLayout.removeWidget(window.demoTabs)
+    splitter.addWidget(window.demoTabs)
+    splitter.addWidget(panel)
+    splitter.setStretchFactor(0, 3)
+    splitter.setStretchFactor(1, 1)
+    splitter.setSizes([1200, 420])
+
+    window.gridLayout.addWidget(splitter, 0, 1, 8, 1)
+    window.rgb_splitter = splitter
+    window.rgb_camera_panel = panel
+    atexit.register(panel.stop)
+
+    debug_print(
+        debug,
+        "RGB panel attached beside TI demoTabs "
+        f"(source={args.rgb_source}, backend={args.rgb_camera_backend})",
+    )
+    return panel
+
+
+def attach_combined_status_panel(rgb_panel, args: argparse.Namespace, debug: bool):
+    if not args.combined_status_panel:
+        return None
+    if rgb_panel is None:
+        debug_print(debug, "combined status panel requested, but RGB panel is not enabled")
+        return None
+
+    try:
+        from PySide2.QtWidgets import QPlainTextEdit, QSizePolicy
+
+        status_widget = QPlainTextEdit()
+        status_widget.setReadOnly(True)
+        status_widget.setMaximumHeight(150)
+        status_widget.setMinimumHeight(115)
+        status_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        status_widget.setStyleSheet(
+            "QPlainTextEdit { background: #151515; color: #e6e6e6; "
+            "border: 1px solid #3a3a3a; font-family: Consolas, monospace; }"
+        )
+        rgb_panel.layout().addWidget(status_widget)
+        panel = CombinedStatusPanel(status_widget)
+        rgb_panel.combined_status_panel = panel
+        combined_print("status panel created")
+        debug_print(debug, "combined status panel attached under RGB panel")
+        return panel
+    except Exception as exc:
+        combined_error(f"status panel creation failed; continuing without it: {exc}")
+        return None
+
+
+def attach_combined_mmwave_logging(window, combined_logger, status_panel, debug: bool) -> None:
+    if combined_logger is None and status_panel is None:
+        return
+
+    try:
+        original_update_graph = window.core.updateGraph
+    except Exception as exc:
+        combined_error(f"mmWave logging hook attach failed: {exc}")
+        return
+
+    def update_graph_with_combined_logging(core_self, output_dict):
+        result = original_update_graph(output_dict)
+        try:
+            demo_instance = core_self.demoClassDict.get(core_self.demo)
+            log_mmwave_output(combined_logger, status_panel, output_dict, demo_instance)
+        except Exception as exc:
+            if combined_logger is not None:
+                combined_logger.log_event("mmwave_log_error", {"error": str(exc)})
+            combined_error(f"MMWAVE logging failed: {exc}")
+        return result
+
+    try:
+        window.core.updateGraph = MethodType(update_graph_with_combined_logging, window.core)
+        combined_print("mmwave logging hook attached")
+        debug_print(debug, "combined mmWave logging hook attached to gui_core.Window.core.updateGraph")
+    except Exception as exc:
+        combined_error(f"mmWave logging hook attach failed: {exc}")
+
+
+def attach_combined_rgb_logging(rgb_panel, combined_logger, status_panel, args: argparse.Namespace, debug: bool) -> None:
+    if rgb_panel is None or (combined_logger is None and status_panel is None):
+        return
+
+    from PySide2.QtCore import QTimer
+
+    pending_results = deque(maxlen=90)
+    state = {"dropped": 0, "last_error_ns": 0}
+
+    def on_rgb_result(result):
+        if len(pending_results) == pending_results.maxlen:
+            state["dropped"] += 1
+        pending_results.append(result)
+
+    def drain_rgb_results():
+        drained = 0
+        while pending_results and drained < 2:
+            result = pending_results.popleft()
+            drained += 1
+            try:
+                log_rgb_result(combined_logger, status_panel, result, args.rgb_log_keypoints)
+            except Exception as exc:
+                now_ns = time.monotonic_ns()
+                if combined_logger is not None:
+                    combined_logger.log_event("rgb_log_error", {"error": str(exc)})
+                if now_ns - state["last_error_ns"] > 1_000_000_000:
+                    combined_error(f"RGB logging failed: {exc}")
+                    state["last_error_ns"] = now_ns
+        if state["dropped"]:
+            dropped = state["dropped"]
+            state["dropped"] = 0
+            if combined_logger is not None:
+                combined_logger.log_event("rgb_log_queue_dropped", {"dropped_results": dropped})
+
+    try:
+        timer = QTimer(rgb_panel)
+        timer.setInterval(50)
+        timer.timeout.connect(drain_rgb_results)
+        timer.start()
+        rgb_panel._combined_rgb_log_timer = timer
+        rgb_panel._combined_rgb_log_queue = pending_results
+        rgb_panel.resultReady.connect(on_rgb_result)
+        combined_print("rgb logging hook attached")
+        debug_print(debug, "combined RGB logging/status hook attached to RGB panel results")
+    except Exception as exc:
+        combined_error(f"RGB logging hook attach failed: {exc}")
+        try:
+            if combined_logger is not None:
+                combined_logger.log_event("rgb_log_hook_error", {"error": str(exc)})
+        except Exception:
+            pass
+
+
 def auto_start(window, debug: bool) -> None:
     debug_print(debug, "auto-start: connecting COM ports via TI Window.onConnect()")
     window.onConnect()
@@ -800,6 +1909,15 @@ def auto_start(window, debug: bool) -> None:
 
 def main() -> int:
     args = parse_args()
+    rgb_panel = None
+    status_panel = None
+    if args.combined_log or args.combined_status_panel:
+        combined_print(
+            "combined_log="
+            f"{bool(args.combined_log)} combined_status_panel={bool(args.combined_status_panel)} "
+            f"rgb_log_keypoints={bool(args.rgb_log_keypoints)}"
+        )
+    combined_logger = create_combined_logger(args, args.debug)
     pose_manager = create_pose_manager_before_qt(args, args.debug)
     add_import_paths(args.debug)
     using_pyside2_shim = check_pyside2_shim(args.debug)
@@ -822,19 +1940,50 @@ def main() -> int:
     window = Window(size=size, title="Industrial Visualizer - TI Style (Vendored)")
     configure_window(window, args, demo_name, args.debug)
     attach_pose_manager(window, pose_manager, args, args.debug)
+    rgb_panel = attach_rgb_panel(window, args, args.debug)
+    status_panel = attach_combined_status_panel(rgb_panel, args, args.debug)
+    attach_combined_rgb_logging(rgb_panel, combined_logger, status_panel, args, args.debug)
+    attach_combined_mmwave_logging(window, combined_logger, status_panel, args.debug)
     window.show()
 
     auto_start_enabled = not args.no_auto_start and not args.demo
     if auto_start_enabled:
+        if combined_logger is not None:
+            combined_logger.log_event(
+                "mmwave_started",
+                {"mode": "auto_start", "cli": args.cli, "data": args.data, "cfg": args.cfg},
+            )
         QTimer.singleShot(500, lambda: auto_start(window, args.debug))
     else:
+        if combined_logger is not None:
+            combined_logger.log_event(
+                "mmwave_start_skipped",
+                {"demo": bool(args.demo), "no_auto_start": bool(args.no_auto_start)},
+            )
         debug_print(args.debug, "auto-start disabled; use Connect then Start and Send Configuration")
+    if combined_logger is not None and rgb_panel is not None:
+        combined_logger.log_event(
+            "rgb_worker_started",
+            {
+                "posture_enabled": bool(args.enable_rgb_posture),
+                "source": str(args.rgb_source),
+                "backend": args.rgb_camera_backend,
+            },
+        )
 
     try:
         return app.exec_()
     finally:
+        if rgb_panel is not None:
+            if combined_logger is not None:
+                combined_logger.log_event("rgb_worker_stopped", {})
+            rgb_panel.stop()
         if pose_manager is not None:
             pose_manager.close()
+        if combined_logger is not None:
+            combined_logger.log_event("mmwave_stopped", {})
+            combined_logger.log_event("app_shutdown", {})
+            combined_logger.close()
 
 
 if __name__ == "__main__":

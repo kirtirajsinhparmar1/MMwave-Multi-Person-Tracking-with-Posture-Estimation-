@@ -4,6 +4,7 @@ import serial
 import time
 import math
 import datetime
+import os
 import json_fix # import this anytime before the JSON.dumps gets called
 import json
 import numpy
@@ -154,10 +155,8 @@ class UARTParser():
 
             if (self.uartCounter % self.framesPerFile == 0):
                 if(self.first_file is True): 
-                    if(os.path.exists('binData/') == False):
-                        # Note that this will create the folder in the caller's path, not necessarily in the viz folder            
-                        os.mkdir('binData/')
-                    os.mkdir('binData/'+self.filepath)
+                    # Note that this creates the folder in the caller's path, not necessarily in the viz folder.
+                    os.makedirs(os.path.join('binData', self.filepath), exist_ok=True)
                     self.first_file = False
                 with open('./binData/'+self.filepath+'/replay_' + str(math.floor(self.uartCounter/self.framesPerFile)) + '.json', 'w') as fp:
                     json_object = json.dumps(data, indent=4)
@@ -266,10 +265,8 @@ class UARTParser():
 
             if (self.uartCounter % self.framesPerFile == 0):
                 if(self.first_file is True): 
-                    if(os.path.exists('binData/') == False):
-                        # Note that this will create the folder in the caller's path, not necessarily in the viz folder            
-                        os.mkdir('binData/')
-                    os.mkdir('binData/'+self.filepath)
+                    # Note that this creates the folder in the caller's path, not necessarily in the viz folder.
+                    os.makedirs(os.path.join('binData', self.filepath), exist_ok=True)
                     self.first_file = False
                 with open('./binData/'+self.filepath+'/replay_' + str(math.floor(self.uartCounter/self.framesPerFile)) + '.json', 'w') as fp:
                     json_object = json.dumps(data, indent=4)

@@ -27,6 +27,58 @@ from pose_model_runtime import CLASS_NAMES as DEFAULT_CLASS_NAMES, PoseModelRunt
 
 UNASSOCIATED_TRACK_INDEXES = {253, 254, 255}
 STALE_TRACK_FRAMES = 30
+POSE_MIN_CONFIDENCE_DEFAULTS = {
+    "STANDING": 0.70,
+    "SITTING": 0.45,
+    "LYING": 0.60,
+    "FALLING": 0.70,
+    "MOVING": 0.35,
+    "UNKNOWN": 0.00,
+}
+POSE_STABILITY_FRAME_DEFAULTS = {
+    "STANDING": 12,
+    "SITTING": 8,
+    "LYING": 14,
+    "FALLING": 4,
+    "MOVING": 4,
+    "UNKNOWN": 6,
+}
+STAND_SIT_MARGIN_DEFAULTS = {
+    "near": 0.06,
+    "mid": 0.10,
+    "far": 0.15,
+}
+STAND_TO_SIT_FRAME_DEFAULTS = {
+    "near": 6,
+    "mid": 8,
+    "far": 12,
+}
+SIT_TO_STAND_FRAME_DEFAULTS = {
+    "near": 8,
+    "mid": 10,
+    "far": 14,
+}
+MOVING_OVERRIDE_FRAME_DEFAULTS = {
+    "near": 3,
+    "mid": 4,
+    "far": 5,
+}
+STRONG_STAND_SIT_MARGIN_DEFAULTS = {
+    "near": 0.12,
+    "mid": 0.18,
+    "far": 0.25,
+}
+SITTING_DROP_DEFAULTS = {
+    "near": 0.20,
+    "mid": 0.25,
+    "far": 0.35,
+}
+STAND_TO_SIT_GATE_MIN_CONFIDENCE_DEFAULT = 0.65
+STAND_TO_SIT_GATE_MARGIN_DEFAULT = 0.15
+STAND_TO_SIT_GATE_FRAMES_DEFAULT = 12
+SIT_TO_STAND_RECOVERY_MARGIN_DEFAULT = 0.10
+SIT_TO_STAND_RECOVERY_FRAMES_DEFAULT = 6
+ASSOC_METHODS = {"auto", "target_index", "nearest", "hybrid"}
 
 
 class TiStylePoseManager:
@@ -48,13 +100,66 @@ class TiStylePoseManager:
         display_hysteresis: bool = True,
         display_stability_ratio: float = 0.70,
         falling_fast_update: bool = True,
-        falling_stability_frames: int = 6,
+        falling_stability_frames: int = POSE_STABILITY_FRAME_DEFAULTS["FALLING"],
         sitting_stability_frames: int = 8,
         sitting_stability_ratio: float = 0.50,
-        sitting_min_confidence: float = 0.40,
+        sitting_min_confidence: float = POSE_MIN_CONFIDENCE_DEFAULTS["SITTING"],
         sitting_max_speed: float = 0.25,
-        standing_min_confidence: float = 0.50,
-        lying_min_confidence: float = 0.50,
+        standing_min_confidence: float = POSE_MIN_CONFIDENCE_DEFAULTS["STANDING"],
+        lying_min_confidence: float = POSE_MIN_CONFIDENCE_DEFAULTS["LYING"],
+        falling_min_confidence: float = POSE_MIN_CONFIDENCE_DEFAULTS["FALLING"],
+        moving_min_confidence: float = POSE_MIN_CONFIDENCE_DEFAULTS["MOVING"],
+        standing_stability_frames: int = POSE_STABILITY_FRAME_DEFAULTS["STANDING"],
+        lying_stability_frames: int = POSE_STABILITY_FRAME_DEFAULTS["LYING"],
+        moving_stability_frames: int = POSE_STABILITY_FRAME_DEFAULTS["MOVING"],
+        unknown_stability_frames: int = POSE_STABILITY_FRAME_DEFAULTS["UNKNOWN"],
+        range_near_max: float = 2.0,
+        range_mid_max: float = 4.0,
+        stand_sit_near_margin: float = STAND_SIT_MARGIN_DEFAULTS["near"],
+        stand_sit_mid_margin: float = STAND_SIT_MARGIN_DEFAULTS["mid"],
+        stand_sit_far_margin: float = STAND_SIT_MARGIN_DEFAULTS["far"],
+        stand_to_sit_near_frames: int = STAND_TO_SIT_FRAME_DEFAULTS["near"],
+        stand_to_sit_mid_frames: int = STAND_TO_SIT_FRAME_DEFAULTS["mid"],
+        stand_to_sit_far_frames: int = STAND_TO_SIT_FRAME_DEFAULTS["far"],
+        sit_to_stand_near_frames: int = SIT_TO_STAND_FRAME_DEFAULTS["near"],
+        sit_to_stand_mid_frames: int = SIT_TO_STAND_FRAME_DEFAULTS["mid"],
+        sit_to_stand_far_frames: int = SIT_TO_STAND_FRAME_DEFAULTS["far"],
+        moving_override_near_frames: int = MOVING_OVERRIDE_FRAME_DEFAULTS["near"],
+        moving_override_mid_frames: int = MOVING_OVERRIDE_FRAME_DEFAULTS["mid"],
+        moving_override_far_frames: int = MOVING_OVERRIDE_FRAME_DEFAULTS["far"],
+        strong_stand_sit_near_margin: float = STRONG_STAND_SIT_MARGIN_DEFAULTS["near"],
+        strong_stand_sit_mid_margin: float = STRONG_STAND_SIT_MARGIN_DEFAULTS["mid"],
+        strong_stand_sit_far_margin: float = STRONG_STAND_SIT_MARGIN_DEFAULTS["far"],
+        moving_require_translation: bool = True,
+        moving_translation_window: int = 8,
+        moving_translation_min_m: float = 0.25,
+        sensor_height_m: float = 1.25,
+        sensor_pitch_deg: float = 0.0,
+        sensor_roll_deg: float = 0.0,
+        sensor_yaw_deg: float = 0.0,
+        use_sensor_calibration: bool = False,
+        floor_z_m: float = 0.0,
+        assoc_debug: bool = False,
+        assoc_method: str = "auto",
+        assoc_nearest_radius_m: float = 0.75,
+        assoc_nearest_z_min: float = -0.5,
+        assoc_nearest_z_max: float = 2.5,
+        assoc_min_points_good: int = 3,
+        use_standing_baseline: bool = False,
+        standing_baseline_min_frames: int = 20,
+        sitting_drop_near_m: float = SITTING_DROP_DEFAULTS["near"],
+        sitting_drop_mid_m: float = SITTING_DROP_DEFAULTS["mid"],
+        sitting_drop_far_m: float = SITTING_DROP_DEFAULTS["far"],
+        sitting_drop_min_sit_prob: float = 0.30,
+        sitting_drop_centroid_m: float = 0.25,
+        sitting_drop_top_m: float = 0.25,
+        sitting_drop_target_z_m: float = 0.20,
+        stand_to_sit_min_confidence: float = STAND_TO_SIT_GATE_MIN_CONFIDENCE_DEFAULT,
+        stand_to_sit_margin: float = STAND_TO_SIT_GATE_MARGIN_DEFAULT,
+        stand_to_sit_frames: int = STAND_TO_SIT_GATE_FRAMES_DEFAULT,
+        stand_to_sit_allow_target_only: bool = False,
+        sit_to_stand_recovery_margin: float = SIT_TO_STAND_RECOVERY_MARGIN_DEFAULT,
+        sit_to_stand_recovery_frames: int = SIT_TO_STAND_RECOVERY_FRAMES_DEFAULT,
         min_associated_points_for_inference: int = 1,
         allow_target_only: bool = False,
         enable_3d_labels: bool = False,
@@ -109,6 +214,92 @@ class TiStylePoseManager:
         self.sitting_max_speed = float(sitting_max_speed)
         self.standing_min_confidence = float(standing_min_confidence)
         self.lying_min_confidence = float(lying_min_confidence)
+        self.falling_min_confidence = float(falling_min_confidence)
+        self.moving_min_confidence = float(moving_min_confidence)
+        self.unknown_min_confidence = POSE_MIN_CONFIDENCE_DEFAULTS["UNKNOWN"]
+        self.standing_stability_frames = max(1, int(standing_stability_frames))
+        self.lying_stability_frames = max(1, int(lying_stability_frames))
+        self.moving_stability_frames = max(1, int(moving_stability_frames))
+        self.unknown_stability_frames = max(1, int(unknown_stability_frames))
+        self.pose_min_confidence_by_pose = {
+            "STANDING": self.standing_min_confidence,
+            "SITTING": self.sitting_min_confidence,
+            "LYING": self.lying_min_confidence,
+            "FALLING": self.falling_min_confidence,
+            "MOVING": self.moving_min_confidence,
+            "UNKNOWN": self.unknown_min_confidence,
+        }
+        self.pose_stability_frames_by_pose = {
+            "STANDING": self.standing_stability_frames,
+            "SITTING": self.sitting_stability_frames,
+            "LYING": self.lying_stability_frames,
+            "FALLING": self.fall_stability_frames,
+            "MOVING": self.moving_stability_frames,
+            "UNKNOWN": self.unknown_stability_frames,
+        }
+        self.range_near_max = float(range_near_max)
+        self.range_mid_max = max(self.range_near_max, float(range_mid_max))
+        self.stand_sit_margin_by_zone = {
+            "near": float(stand_sit_near_margin),
+            "mid": float(stand_sit_mid_margin),
+            "far": float(stand_sit_far_margin),
+        }
+        self.stand_to_sit_frames_by_zone = {
+            "near": max(1, int(stand_to_sit_near_frames)),
+            "mid": max(1, int(stand_to_sit_mid_frames)),
+            "far": max(1, int(stand_to_sit_far_frames)),
+        }
+        self.sit_to_stand_frames_by_zone = {
+            "near": max(1, int(sit_to_stand_near_frames)),
+            "mid": max(1, int(sit_to_stand_mid_frames)),
+            "far": max(1, int(sit_to_stand_far_frames)),
+        }
+        self.unknown_to_stand_sit_frames_by_zone = dict(
+            self.stand_to_sit_frames_by_zone
+        )
+        self.moving_override_frames_by_zone = {
+            "near": max(1, int(moving_override_near_frames)),
+            "mid": max(1, int(moving_override_mid_frames)),
+            "far": max(1, int(moving_override_far_frames)),
+        }
+        self.strong_stand_sit_margin_by_zone = {
+            "near": float(strong_stand_sit_near_margin),
+            "mid": float(strong_stand_sit_mid_margin),
+            "far": float(strong_stand_sit_far_margin),
+        }
+        self.moving_require_translation = bool(moving_require_translation)
+        self.moving_translation_window = max(2, int(moving_translation_window))
+        self.moving_translation_min_m = float(moving_translation_min_m)
+        self.sensor_height_m = float(sensor_height_m)
+        self.sensor_pitch_deg = float(sensor_pitch_deg)
+        self.sensor_roll_deg = float(sensor_roll_deg)
+        self.sensor_yaw_deg = float(sensor_yaw_deg)
+        self.use_sensor_calibration = bool(use_sensor_calibration)
+        self.floor_z_m = float(floor_z_m)
+        self.assoc_debug = bool(assoc_debug)
+        assoc_method = str(assoc_method or "auto").lower()
+        self.assoc_method = assoc_method if assoc_method in ASSOC_METHODS else "auto"
+        self.assoc_nearest_radius_m = max(0.0, float(assoc_nearest_radius_m))
+        self.assoc_nearest_z_min = float(assoc_nearest_z_min)
+        self.assoc_nearest_z_max = float(assoc_nearest_z_max)
+        self.assoc_min_points_good = max(1, int(assoc_min_points_good))
+        self.use_standing_baseline = bool(use_standing_baseline)
+        self.standing_baseline_min_frames = max(1, int(standing_baseline_min_frames))
+        self.sitting_drop_by_zone = {
+            "near": float(sitting_drop_near_m),
+            "mid": float(sitting_drop_mid_m),
+            "far": float(sitting_drop_far_m),
+        }
+        self.sitting_drop_min_sit_prob = float(sitting_drop_min_sit_prob)
+        self.sitting_drop_centroid_m = float(sitting_drop_centroid_m)
+        self.sitting_drop_top_m = float(sitting_drop_top_m)
+        self.sitting_drop_target_z_m = float(sitting_drop_target_z_m)
+        self.stand_to_sit_min_confidence = float(stand_to_sit_min_confidence)
+        self.stand_to_sit_margin = float(stand_to_sit_margin)
+        self.stand_to_sit_frames = max(1, int(stand_to_sit_frames))
+        self.stand_to_sit_allow_target_only = bool(stand_to_sit_allow_target_only)
+        self.sit_to_stand_recovery_margin = float(sit_to_stand_recovery_margin)
+        self.sit_to_stand_recovery_frames = max(1, int(sit_to_stand_recovery_frames))
         self.min_associated_points_for_inference = max(
             0, int(min_associated_points_for_inference)
         )
@@ -135,16 +326,34 @@ class TiStylePoseManager:
         self.height_history = defaultdict(lambda: deque(maxlen=8))
         display_history_len = max(
             self.display_stability_frames,
-            self.fall_stability_frames,
-            self.sitting_stability_frames,
+            *self.pose_stability_frames_by_pose.values(),
+            *self.stand_to_sit_frames_by_zone.values(),
+            *self.sit_to_stand_frames_by_zone.values(),
+            *self.moving_override_frames_by_zone.values(),
+            self.stand_to_sit_frames,
+            self.sit_to_stand_recovery_frames,
         )
         self.display_history = defaultdict(lambda: deque(maxlen=display_history_len))
+        self.moving_override_history = defaultdict(
+            lambda: deque(maxlen=max(self.moving_override_frames_by_zone.values()))
+        )
+        self.stand_to_sit_gate_history = defaultdict(
+            lambda: deque(maxlen=self.stand_to_sit_frames)
+        )
+        self.sit_to_stand_recovery_history = defaultdict(
+            lambda: deque(maxlen=self.sit_to_stand_recovery_frames)
+        )
         self.display_state: dict[int, dict[str, Any]] = {}
         self.raw_label_history = defaultdict(lambda: deque(maxlen=display_history_len))
         self.confidence_history = defaultdict(lambda: deque(maxlen=display_history_len))
         self.probability_history = defaultdict(lambda: deque(maxlen=display_history_len))
         self.position_history = defaultdict(lambda: deque(maxlen=display_history_len))
         self.velocity_history = defaultdict(lambda: deque(maxlen=display_history_len))
+        self.translation_history = defaultdict(
+            lambda: deque(maxlen=self.moving_translation_window)
+        )
+        self.standing_baseline: dict[int, dict[str, Any]] = {}
+        self._last_assoc_debug_summary_frame = -999999
         self._log_file = None
         self._log_writer = None
         self._log_path: Path | None = None
@@ -160,7 +369,13 @@ class TiStylePoseManager:
         frame_num = _int_value(output_dict.get("frameNum"), 0)
         tracks = _rows(output_dict.get("trackData"))
         points = _rows(output_dict.get("pointCloud"))
+        track_indexes = _flat_values(output_dict.get("trackIndexes"))
         target_heights = _height_by_tid(output_dict.get("heightData"))
+        track_index_to_tid = {
+            index: int(_float_at(track, 0))
+            for index, track in enumerate(tracks)
+            if len(track) > 0
+        }
 
         results: dict[int, dict] = {}
         seen_tids: set[int] = set()
@@ -177,10 +392,34 @@ class TiStylePoseManager:
             vz = float(target["vel_z"])
             horizontal_speed = math.sqrt(vx * vx + vy * vy)
             vertical_speed = abs(vz)
+            range_m = math.sqrt(
+                float(target["pos_x"]) * float(target["pos_x"])
+                + float(target["pos_y"]) * float(target["pos_y"])
+            )
+            range_zone = self._range_zone(range_m)
             motion_state = self._update_motion_state(tid, horizontal_speed)
             height_drop = self._update_height_drop(tid, float(target["pos_z"]))
 
-            associated_points = self._associated_points(tid, points)
+            cal_target = self._calibrated_point(
+                float(target["pos_x"]),
+                float(target["pos_y"]),
+                float(target["pos_z"]),
+            )
+            assoc = self._associate_points(
+                tid=tid,
+                target=target,
+                points=points,
+                track_indexes=track_indexes,
+                track_index_to_tid=track_index_to_tid,
+                frame_num=frame_num,
+                tracks_total=len(tracks),
+            )
+            associated_points = assoc["points"]
+            geometry = self._point_geometry(
+                associated_points=associated_points,
+                target=target,
+                cal_target=cal_target,
+            )
             build_result = features.build_22_feature_vector(target, associated_points)
             num_points = int(build_result.num_points)
             can_use_frame = self._can_use_frame_for_inference(num_points)
@@ -243,6 +482,18 @@ class TiStylePoseManager:
                 probabilities=probabilities,
                 horizontal_speed=horizontal_speed,
             )
+            stand_sit = self._resolve_stand_sit(
+                tid=tid,
+                prediction_exists=prediction_exists,
+                smoothed_label=smoothed_label,
+                smoothed_confidence=smoothed_confidence,
+                probabilities=probabilities,
+                range_m=range_m,
+                range_zone=range_zone,
+                geometry=geometry,
+                horizontal_speed=horizontal_speed,
+                motion_state=motion_state,
+            )
             candidate_label = self._final_label(
                 window_ready=window_ready,
                 prediction_exists=prediction_exists,
@@ -255,8 +506,15 @@ class TiStylePoseManager:
                 probabilities=probabilities,
                 fall_gate_passed=fall_gate_passed,
                 sitting_gate_passed=sitting_gate_passed,
+                stand_sit=stand_sit,
             )
-            candidate_confidence = smoothed_confidence if prediction_exists else 0.0
+            candidate_confidence = (
+                float(stand_sit.get("candidate_confidence", smoothed_confidence))
+                if prediction_exists and bool(stand_sit.get("active"))
+                else smoothed_confidence
+                if prediction_exists
+                else 0.0
+            )
             display = self._update_display_state(
                 tid=tid,
                 candidate_label=candidate_label,
@@ -264,6 +522,19 @@ class TiStylePoseManager:
                 window_ready=window_ready,
                 prediction_exists=prediction_exists,
                 horizontal_speed=horizontal_speed,
+                motion_state=motion_state,
+                raw_label=raw_label,
+                smoothed_label=smoothed_label,
+                target_position=(
+                    float(target["pos_x"]),
+                    float(target["pos_y"]),
+                    float(target["pos_z"]),
+                ),
+                range_m=range_m,
+                range_zone=range_zone,
+                quality=quality,
+                geom_quality=str(geometry.get("geom_quality", "")),
+                stand_sit=stand_sit,
                 fall_gate_passed=fall_gate_passed,
                 fall_gate_reason=fall_gate_reason,
                 sitting_gate_passed=sitting_gate_passed,
@@ -271,6 +542,16 @@ class TiStylePoseManager:
             )
             displayed_label = display["displayed_label"]
             displayed_confidence = display["displayed_confidence"]
+            self._update_standing_baseline(
+                tid=tid,
+                displayed_label=displayed_label,
+                stand_sit=stand_sit,
+                geometry=geometry,
+                target=target,
+                range_m=range_m,
+                horizontal_speed=horizontal_speed,
+                motion_state=motion_state,
+            )
 
             result = {
                 "tid": tid,
@@ -304,8 +585,49 @@ class TiStylePoseManager:
                 "display_stability_count": display["display_stability_count"],
                 "display_stability_required": display["display_stability_required"],
                 "display_stability_ratio": display["display_stability_ratio"],
+                "candidate_stable_count": display["candidate_stable_count"],
+                "pose_min_confidence": display["pose_min_confidence"],
+                "pose_required_frames": display["pose_required_frames"],
+                "range_m": range_m,
+                "range_zone": range_zone,
+                "stand_prob": stand_sit["standing_prob"],
+                "sit_prob": stand_sit["sitting_prob"],
+                "stand_sit_margin": stand_sit["margin"],
+                "stand_sit_zone": stand_sit["range_zone"],
+                "stand_sit_decision": stand_sit["decision"],
+                "stand_sit_reason": stand_sit.get("reason", ""),
+                "stand_sit_strong": display.get("strong_stand_sit", False),
+                "stand_sit_strong_margin": display.get("strong_stand_sit_margin", 0.0),
+                "stand_sit_required_frames": display["stand_sit_required_frames"],
+                "stand_sit_stable_count": display["stand_sit_stable_count"],
+                "moving_override_stable_count": display["moving_override_stable_count"],
+                "moving_override_required": display["moving_override_required"],
+                "moving_override_reason": display.get("moving_override_reason", ""),
+                "moving_translation_displacement_m": display.get(
+                    "moving_translation_displacement_m", 0.0
+                ),
+                "moving_translation_confirmed": display.get(
+                    "moving_translation_confirmed", False
+                ),
+                "stand_to_sit_gate": display.get("stand_to_sit_gate", "NA"),
+                "stand_to_sit_conf": display.get("stand_to_sit_conf", 0.0),
+                "stand_to_sit_margin": display.get("stand_to_sit_margin", 0.0),
+                "stand_to_sit_stable_count": display.get(
+                    "stand_to_sit_stable_count", 0
+                ),
+                "stand_to_sit_required": display.get("stand_to_sit_required", 0),
+                "stand_to_sit_quality_ok": display.get(
+                    "stand_to_sit_quality_ok", False
+                ),
+                "sit_to_stand_recovery_count": display.get(
+                    "sit_to_stand_recovery_count", 0
+                ),
+                "sit_to_stand_recovery_required": display.get(
+                    "sit_to_stand_recovery_required", self.sit_to_stand_recovery_frames
+                ),
                 "display_status": display["display_status"],
                 "transition_reason": display["transition_reason"],
+                "final_reason": display["transition_reason"],
                 "fall_gate_passed": fall_gate_passed,
                 "fall_gate_reason": fall_gate_reason,
                 "sitting_gate_passed": sitting_gate_passed,
@@ -313,15 +635,47 @@ class TiStylePoseManager:
                 "stability_count": display["display_stability_count"],
                 "stability_required": display["display_stability_required"],
                 "stability_ratio": display["display_stability_ratio"],
-                "assoc_mode": "index",
+                "assoc_mode": assoc["final_assoc"],
+                "assoc_method": assoc["final_assoc"],
                 "track_index": tid,
+                "points_total": assoc["points_total"],
+                "tracks_total": assoc["tracks_total"],
+                "has_target_index": assoc["has_target_index"],
+                "has_tid": assoc["has_tid"],
+                "points_by_target_index": assoc["points_by_target_index"],
+                "points_by_nearest": assoc["points_by_nearest"],
                 "horizontal_speed": horizontal_speed,
                 "vertical_speed": vertical_speed,
                 "height_drop": height_drop,
                 "x": float(target["pos_x"]),
                 "y": float(target["pos_y"]),
                 "z": float(target["pos_z"]),
+                "raw_x": float(target["pos_x"]),
+                "raw_y": float(target["pos_y"]),
+                "raw_z": float(target["pos_z"]),
+                "cal_x": cal_target["x"],
+                "cal_y": cal_target["y"],
+                "cal_z": cal_target["z"],
+                "target_z": float(target["pos_z"]),
+                "cal_target_z": cal_target["z"],
+                "floor_z": self.floor_z_m,
+                "floor_relative_z": cal_target["z"] - self.floor_z_m,
+                "sensor_height_m": self.sensor_height_m,
+                "sensor_pitch_deg": self.sensor_pitch_deg,
                 "target_height": float(target_heights.get(tid, 0.0)),
+                **geometry,
+                "baseline_ready": stand_sit.get("baseline_ready", False),
+                "baseline_frames": stand_sit.get("baseline_frames", 0),
+                "baseline_top_z": stand_sit.get("baseline_top_z"),
+                "baseline_centroid_z": stand_sit.get("baseline_centroid_z"),
+                "height_drop_from_baseline": stand_sit.get("height_drop_from_baseline"),
+                "centroid_drop": stand_sit.get("centroid_drop"),
+                "target_z_drop": stand_sit.get("target_z_drop"),
+                "geometry_decision": stand_sit.get("geometry_decision", "NA"),
+                "geometry_reason": stand_sit.get("geometry_reason", "NA"),
+                "geometry_range_threshold": stand_sit.get(
+                    "geometry_range_threshold", 0.0
+                ),
                 "model_asset_used": self._model_asset_for_label(displayed_label),
                 "model_scale": self._model_scale_for_label(displayed_label),
                 "ground_z": self.ground_z,
@@ -353,11 +707,16 @@ class TiStylePoseManager:
         self.height_history.pop(tid_int, None)
         self.display_history.pop(tid_int, None)
         self.display_state.pop(tid_int, None)
+        self.moving_override_history.pop(tid_int, None)
+        self.stand_to_sit_gate_history.pop(tid_int, None)
+        self.sit_to_stand_recovery_history.pop(tid_int, None)
         self.raw_label_history.pop(tid_int, None)
         self.confidence_history.pop(tid_int, None)
         self.probability_history.pop(tid_int, None)
         self.position_history.pop(tid_int, None)
         self.velocity_history.pop(tid_int, None)
+        self.translation_history.pop(tid_int, None)
+        self.standing_baseline.pop(tid_int, None)
 
     def reset_all(self) -> None:
         features.reset_all()
@@ -368,11 +727,16 @@ class TiStylePoseManager:
         self.height_history.clear()
         self.display_history.clear()
         self.display_state.clear()
+        self.moving_override_history.clear()
+        self.stand_to_sit_gate_history.clear()
+        self.sit_to_stand_recovery_history.clear()
         self.raw_label_history.clear()
         self.confidence_history.clear()
         self.probability_history.clear()
         self.position_history.clear()
         self.velocity_history.clear()
+        self.translation_history.clear()
+        self.standing_baseline.clear()
 
     def get_3d_label_records(self, track_data=None, height_data=None) -> list[dict]:
         if not self.enable_3d_labels:
@@ -577,6 +941,270 @@ class TiStylePoseManager:
         # with previous frame target positions.
         return associated
 
+    def _associate_points(
+        self,
+        *,
+        tid: int,
+        target: dict[str, float],
+        points: list[list[float]],
+        track_indexes: list[float],
+        track_index_to_tid: dict[int, int],
+        frame_num: int,
+        tracks_total: int,
+    ) -> dict[str, Any]:
+        by_index = self._points_by_target_index(
+            tid=tid,
+            points=points,
+            track_indexes=track_indexes,
+            track_index_to_tid=track_index_to_tid,
+        )
+        by_nearest = self._points_by_nearest(target=target, points=points)
+        method = self.assoc_method
+        if method == "target_index":
+            final_points = by_index
+            final_assoc = "target_index"
+        elif method == "nearest":
+            final_points = by_nearest
+            final_assoc = "nearest"
+        else:
+            final_points = by_index if by_index else by_nearest
+            final_assoc = "target_index" if by_index else "nearest"
+            if method == "auto" and not by_index and not by_nearest:
+                final_assoc = "auto_none"
+            elif method == "hybrid" and not by_index and by_nearest:
+                final_assoc = "hybrid_nearest"
+            elif method == "hybrid" and by_index:
+                final_assoc = "hybrid_target_index"
+
+        has_point_track = any(
+            int(_float_at(point, 6, 255.0)) not in UNASSOCIATED_TRACK_INDEXES
+            for point in points
+            if len(point) > 6
+        )
+        assoc = {
+            "points": final_points,
+            "points_total": len(points),
+            "tracks_total": int(tracks_total),
+            "has_target_index": len(track_indexes) >= len(points) and len(points) > 0,
+            "has_tid": has_point_track,
+            "points_by_target_index": len(by_index),
+            "points_by_nearest": len(by_nearest),
+            "final_assoc": final_assoc,
+        }
+        self._assoc_debug_print(frame_num, tid, assoc)
+        return assoc
+
+    def _points_by_target_index(
+        self,
+        *,
+        tid: int,
+        points: list[list[float]],
+        track_indexes: list[float],
+        track_index_to_tid: dict[int, int],
+    ) -> list[dict[str, float]]:
+        associated: list[dict[str, float]] = []
+        for index, point in enumerate(points):
+            candidates: list[int] = []
+            if index < len(track_indexes):
+                candidates.append(int(track_indexes[index]))
+            if len(point) > 6:
+                candidates.append(int(_float_at(point, 6, 255.0)))
+            matched_value: int | None = None
+            for value in candidates:
+                if value in UNASSOCIATED_TRACK_INDEXES:
+                    continue
+                if value == int(tid) or track_index_to_tid.get(value) == int(tid):
+                    matched_value = value
+                    break
+            if matched_value is None:
+                continue
+            associated.append(self._point_dict(index, point, matched_value))
+        return associated
+
+    def _points_by_nearest(
+        self,
+        *,
+        target: dict[str, float],
+        points: list[list[float]],
+    ) -> list[dict[str, float]]:
+        associated: list[dict[str, float]] = []
+        tx = float(target.get("pos_x", 0.0) or 0.0)
+        ty = float(target.get("pos_y", 0.0) or 0.0)
+        radius = self.assoc_nearest_radius_m
+        z_min = min(self.assoc_nearest_z_min, self.assoc_nearest_z_max)
+        z_max = max(self.assoc_nearest_z_min, self.assoc_nearest_z_max)
+        for index, point in enumerate(points):
+            px = _float_at(point, 0)
+            py = _float_at(point, 1)
+            pz = _float_at(point, 2)
+            if not (z_min <= pz <= z_max):
+                continue
+            distance_xy = math.sqrt((px - tx) * (px - tx) + (py - ty) * (py - ty))
+            if distance_xy <= radius:
+                associated.append(self._point_dict(index, point, -1))
+        return associated
+
+    def _point_dict(
+        self, index: int, point: list[float], track_index: int
+    ) -> dict[str, float]:
+        return {
+            "index": index,
+            "x": _float_at(point, 0),
+            "y": _float_at(point, 1),
+            "z": _float_at(point, 2),
+            "doppler": _float_at(point, 3),
+            "snr": _float_at(point, 4),
+            "track_index": int(track_index),
+        }
+
+    def _assoc_debug_print(self, frame_num: int, tid: int, assoc: dict[str, Any]) -> None:
+        if not self.assoc_debug:
+            return
+        final_points = int(assoc.get("points_by_target_index", 0) or 0)
+        final_points = int(len(assoc.get("points", []) or []))
+        should_print = frame_num % 30 == 0 or final_points == 0
+        if not should_print:
+            return
+        if frame_num != self._last_assoc_debug_summary_frame:
+            self._last_assoc_debug_summary_frame = frame_num
+            print(
+                "[POINT_ASSOC] "
+                f"frame={frame_num} points_total={assoc.get('points_total', 0)} "
+                f"tracks_total={assoc.get('tracks_total', 0)} "
+                f"has_target_index={str(bool(assoc.get('has_target_index'))).lower()} "
+                f"has_tid={str(bool(assoc.get('has_tid'))).lower()}",
+                flush=True,
+            )
+        print(
+            "[POINT_ASSOC] "
+            f"tid={tid} track_index={tid} "
+            f"points_by_target_index={assoc.get('points_by_target_index', 0)} "
+            f"points_by_nearest={assoc.get('points_by_nearest', 0)} "
+            f"final_assoc={assoc.get('final_assoc', '')} "
+            f"final_points={final_points}",
+            flush=True,
+        )
+
+    def _calibrated_point(self, x: float, y: float, z: float) -> dict[str, float]:
+        raw_x = float(x)
+        raw_y = float(y)
+        raw_z = float(z)
+        if not self.use_sensor_calibration:
+            return {"x": raw_x, "y": raw_y, "z": raw_z}
+
+        yaw = math.radians(self.sensor_yaw_deg)
+        pitch = math.radians(self.sensor_pitch_deg)
+        roll = math.radians(self.sensor_roll_deg)
+
+        cos_yaw = math.cos(yaw)
+        sin_yaw = math.sin(yaw)
+        x1 = raw_x * cos_yaw - raw_y * sin_yaw
+        y1 = raw_x * sin_yaw + raw_y * cos_yaw
+        z1 = raw_z
+
+        cos_pitch = math.cos(pitch)
+        sin_pitch = math.sin(pitch)
+        y2 = y1 * cos_pitch - z1 * sin_pitch
+        z2 = y1 * sin_pitch + z1 * cos_pitch
+        x2 = x1
+
+        cos_roll = math.cos(roll)
+        sin_roll = math.sin(roll)
+        x3 = x2 * cos_roll + z2 * sin_roll
+        z3 = -x2 * sin_roll + z2 * cos_roll
+        return {"x": x3, "y": y2, "z": z3 + self.sensor_height_m}
+
+    def _point_geometry(
+        self,
+        *,
+        associated_points: list[dict[str, float]],
+        target: dict[str, float],
+        cal_target: dict[str, float],
+    ) -> dict[str, Any]:
+        target_range_m = math.sqrt(
+            float(target["pos_x"]) * float(target["pos_x"])
+            + float(target["pos_y"]) * float(target["pos_y"])
+        )
+        base = {
+            "associated_point_count": len(associated_points),
+            "geom_pts": len(associated_points),
+            "target_x": float(target["pos_x"]),
+            "target_y": float(target["pos_y"]),
+            "target_z": float(target["pos_z"]),
+            "target_range_m": target_range_m,
+            "target_speed": math.sqrt(
+                float(target["vel_x"]) * float(target["vel_x"])
+                + float(target["vel_y"]) * float(target["vel_y"])
+            ),
+            "geom_centroid_z": None,
+            "geom_top_z": None,
+            "geom_bottom_z": None,
+            "geom_height": None,
+            "geom_floor_centroid_z": None,
+            "geom_floor_top_z": None,
+            "geom_floor_bottom_z": None,
+            "point_centroid_x": None,
+            "point_centroid_y": None,
+            "point_centroid_z": None,
+            "point_top_z": None,
+            "point_bottom_z": None,
+            "point_height_extent": None,
+            "point_vertical_spread": None,
+            "point_range_min": None,
+            "point_range_max": None,
+            "floor_relative_top_z": None,
+            "floor_relative_centroid_z": None,
+            "floor_relative_bottom_z": None,
+            "geom_quality": "TARGET_ONLY",
+        }
+        if not associated_points:
+            return base
+
+        xs = [float(point["x"]) for point in associated_points]
+        ys = [float(point["y"]) for point in associated_points]
+        zs = [float(point["z"]) for point in associated_points]
+        cal_points = [
+            self._calibrated_point(point["x"], point["y"], point["z"])
+            for point in associated_points
+        ]
+        cal_zs = [float(point["z"]) for point in cal_points]
+        centroid_x = sum(xs) / len(xs)
+        centroid_y = sum(ys) / len(ys)
+        centroid_z = sum(zs) / len(zs)
+        top_z = max(zs)
+        bottom_z = min(zs)
+        height_extent = top_z - bottom_z
+        ranges = [math.sqrt(x * x + y * y) for x, y in zip(xs, ys)]
+        cal_centroid_z = sum(cal_zs) / len(cal_zs)
+        cal_top_z = max(cal_zs)
+        cal_bottom_z = min(cal_zs)
+        spread = math.sqrt(sum((z - centroid_z) ** 2 for z in zs) / len(zs))
+        base.update(
+            {
+                "geom_centroid_z": centroid_z,
+                "geom_top_z": top_z,
+                "geom_bottom_z": bottom_z,
+                "geom_height": height_extent,
+                "geom_floor_centroid_z": cal_centroid_z - self.floor_z_m,
+                "geom_floor_top_z": cal_top_z - self.floor_z_m,
+                "geom_floor_bottom_z": cal_bottom_z - self.floor_z_m,
+                "point_centroid_x": centroid_x,
+                "point_centroid_y": centroid_y,
+                "point_centroid_z": centroid_z,
+                "point_top_z": top_z,
+                "point_bottom_z": bottom_z,
+                "point_height_extent": height_extent,
+                "point_vertical_spread": spread,
+                "point_range_min": min(ranges),
+                "point_range_max": max(ranges),
+                "floor_relative_top_z": cal_top_z - self.floor_z_m,
+                "floor_relative_centroid_z": cal_centroid_z - self.floor_z_m,
+                "floor_relative_bottom_z": cal_bottom_z - self.floor_z_m,
+                "geom_quality": "POINT_GEOMETRY",
+            }
+        )
+        return base
+
     def _update_motion_state(self, tid: int, horizontal_speed: float) -> str:
         history = self.speed_history[int(tid)]
         history.append(float(horizontal_speed) > self.moving_speed_threshold)
@@ -713,6 +1341,299 @@ class TiStylePoseManager:
             return True, "high_confidence_with_mild_drop"
         return False, "no_physical_fall_evidence"
 
+    def _range_zone(self, range_m: float | None) -> str:
+        try:
+            value = float(range_m)
+        except Exception:
+            return "unknown"
+        if not math.isfinite(value):
+            return "unknown"
+        if value <= self.range_near_max:
+            return "near"
+        if value <= self.range_mid_max:
+            return "mid"
+        return "far"
+
+    def _zone_value(self, values: dict[str, Any], zone: str, default: Any = None) -> Any:
+        if zone in values:
+            return values[zone]
+        if "mid" in values:
+            return values["mid"]
+        return default
+
+    def _stand_sit_transition_frames(
+        self, previous_label: str, candidate_label: str, range_zone: str
+    ) -> int:
+        previous = str(previous_label or "").upper()
+        candidate = str(candidate_label or "").upper()
+        if previous == "STANDING" and candidate == "SITTING":
+            return int(self._zone_value(self.stand_to_sit_frames_by_zone, range_zone, 8))
+        if previous == "SITTING" and candidate == "STANDING":
+            return int(self._zone_value(self.sit_to_stand_frames_by_zone, range_zone, 10))
+        if previous in {"MOVING", "UNKNOWN", "WARMUP", "NO_POSE", ""} and candidate in {
+            "STANDING",
+            "SITTING",
+        }:
+            return int(
+                self._zone_value(
+                    self.unknown_to_stand_sit_frames_by_zone, range_zone, 8
+                )
+            )
+        return int(self._zone_value(self.stand_to_sit_frames_by_zone, range_zone, 8))
+
+    def _empty_stand_sit_info(
+        self,
+        *,
+        probabilities: dict[str, float],
+        range_m: float | None,
+        range_zone: str,
+    ) -> dict[str, Any]:
+        standing_prob = self._probability(probabilities, "STANDING")
+        sitting_prob = self._probability(probabilities, "SITTING")
+        return {
+            "active": False,
+            "standing_prob": standing_prob,
+            "sitting_prob": sitting_prob,
+            "margin": standing_prob - sitting_prob,
+            "range_m": range_m,
+            "range_zone": range_zone,
+            "decision": "NA",
+            "resolved_label": "",
+            "candidate_confidence": 0.0,
+            "reason": "NA",
+            "baseline_ready": False,
+            "baseline_frames": 0,
+            "baseline_top_z": None,
+            "baseline_centroid_z": None,
+            "baseline_target_z": None,
+            "height_drop_from_baseline": None,
+            "centroid_drop": None,
+            "target_z_drop": None,
+            "geometry_decision": "NA",
+            "geometry_reason": "NA",
+            "geometry_range_threshold": 0.0,
+        }
+
+    def _resolve_stand_sit(
+        self,
+        *,
+        tid: int,
+        prediction_exists: bool,
+        smoothed_label: str,
+        smoothed_confidence: float,
+        probabilities: dict[str, float],
+        range_m: float | None,
+        range_zone: str,
+        geometry: dict[str, Any],
+        horizontal_speed: float,
+        motion_state: str,
+    ) -> dict[str, Any]:
+        info = self._empty_stand_sit_info(
+            probabilities=probabilities,
+            range_m=range_m,
+            range_zone=range_zone,
+        )
+        if not prediction_exists:
+            return info
+
+        label = str(smoothed_label or "").upper()
+        if label not in {"STANDING", "SITTING"}:
+            return info
+
+        standing_prob = info["standing_prob"]
+        sitting_prob = info["sitting_prob"]
+        margin = float(standing_prob) - float(sitting_prob)
+        required_margin = float(
+            self._zone_value(self.stand_sit_margin_by_zone, range_zone, 0.10)
+        )
+        previous = self.display_state.get(int(tid), {})
+        previous_label = str(previous.get("label", "")).upper()
+        self._apply_geometry_stand_sit_evidence(
+            tid=tid,
+            info=info,
+            geometry=geometry,
+            range_zone=range_zone,
+            horizontal_speed=horizontal_speed,
+            motion_state=motion_state,
+            previous_label=previous_label,
+        )
+
+        info["active"] = True
+        if margin >= required_margin:
+            info.update(
+                {
+                    "decision": "STANDING",
+                    "resolved_label": "STANDING",
+                    "candidate_confidence": standing_prob,
+                    "reason": "stand_sit_margin_standing",
+                }
+            )
+        elif -margin >= required_margin:
+            info.update(
+                {
+                    "decision": "SITTING",
+                    "resolved_label": "SITTING",
+                    "candidate_confidence": sitting_prob,
+                    "reason": "stand_sit_margin_sitting",
+                }
+            )
+        elif previous_label in {"STANDING", "SITTING"}:
+            info.update(
+                {
+                    "decision": "HOLD",
+                    "resolved_label": previous_label,
+                    "candidate_confidence": (
+                        standing_prob if previous_label == "STANDING" else sitting_prob
+                    ),
+                    "reason": "stand_sit_hold_previous_ambiguous",
+                }
+            )
+        else:
+            info.update(
+                {
+                    "decision": "HOLD",
+                    "resolved_label": "UNKNOWN",
+                    "candidate_confidence": float(smoothed_confidence or 0.0),
+                    "reason": "stand_sit_hold_previous_ambiguous",
+                }
+            )
+
+        geometry_decision = str(info.get("geometry_decision") or "NA").upper()
+        if geometry_decision in {"STANDING", "SITTING"}:
+            if geometry_decision == "SITTING":
+                confidence = max(sitting_prob, float(smoothed_confidence or 0.0) * 0.5)
+            else:
+                confidence = max(standing_prob, float(smoothed_confidence or 0.0) * 0.5)
+            info.update(
+                {
+                    "decision": geometry_decision,
+                    "resolved_label": geometry_decision,
+                    "candidate_confidence": confidence,
+                    "reason": str(info.get("geometry_reason") or "geometry_sitting_drop"),
+                }
+            )
+        return info
+
+    def _apply_geometry_stand_sit_evidence(
+        self,
+        *,
+        tid: int,
+        info: dict[str, Any],
+        geometry: dict[str, Any],
+        range_zone: str,
+        horizontal_speed: float,
+        motion_state: str,
+        previous_label: str,
+    ) -> None:
+        threshold = float(
+            self._zone_value(self.sitting_drop_by_zone, range_zone, SITTING_DROP_DEFAULTS["mid"])
+        )
+        baseline = self.standing_baseline.get(int(tid), {})
+        baseline_frames = int(baseline.get("frames", 0) or 0)
+        baseline_ready = (
+            self.use_standing_baseline
+            and baseline_frames >= self.standing_baseline_min_frames
+        )
+        info.update(
+            {
+                "baseline_ready": baseline_ready,
+                "baseline_frames": baseline_frames,
+                "baseline_top_z": baseline.get("top_z"),
+                "baseline_centroid_z": baseline.get("centroid_z"),
+                "baseline_target_z": baseline.get("target_z"),
+                "geometry_range_threshold": threshold,
+            }
+        )
+        if not baseline_ready:
+            return
+
+        top_z = _optional_float(geometry.get("geom_top_z"))
+        centroid_z = _optional_float(geometry.get("geom_centroid_z"))
+        target_z = _optional_float(geometry.get("target_z"))
+        height_extent = _optional_float(geometry.get("geom_height"))
+        baseline_top = _optional_float(baseline.get("top_z"))
+        baseline_centroid = _optional_float(baseline.get("centroid_z"))
+        baseline_target = _optional_float(baseline.get("target_z"))
+        baseline_height = _optional_float(baseline.get("height_extent"))
+
+        top_drop = (
+            max(0.0, baseline_top - top_z)
+            if baseline_top is not None and top_z is not None
+            else None
+        )
+        centroid_drop = (
+            max(0.0, baseline_centroid - centroid_z)
+            if baseline_centroid is not None and centroid_z is not None
+            else None
+        )
+        target_z_drop = (
+            max(0.0, baseline_target - target_z)
+            if baseline_target is not None and target_z is not None
+            else None
+        )
+        height_drop_from_baseline = (
+            max(0.0, baseline_height - height_extent)
+            if baseline_height is not None and height_extent is not None
+            else None
+        )
+        info.update(
+            {
+                "height_drop_from_baseline": height_drop_from_baseline,
+                "centroid_drop": centroid_drop,
+                "target_z_drop": target_z_drop,
+            }
+        )
+
+        sitting_prob = float(info.get("sitting_prob", 0.0) or 0.0)
+        standing_prob = float(info.get("standing_prob", 0.0) or 0.0)
+        margin = standing_prob - sitting_prob
+        stationary = (
+            float(horizontal_speed or 0.0) <= self.sitting_max_speed
+            and str(motion_state).upper() != "MOVING"
+        )
+        model_not_strong_against_sit = margin < float(
+            self._zone_value(self.strong_stand_sit_margin_by_zone, range_zone, 0.18)
+        )
+        point_geometry = str(geometry.get("geom_quality", "")) == "POINT_GEOMETRY"
+        point_drop = (
+            (centroid_drop is not None and centroid_drop >= threshold)
+            or (top_drop is not None and top_drop >= threshold)
+            or (
+                height_drop_from_baseline is not None
+                and height_drop_from_baseline >= threshold
+            )
+        )
+        target_drop = (
+            target_z_drop is not None and target_z_drop >= self.sitting_drop_target_z_m
+        )
+        sitting_drop = point_drop or (not point_geometry and target_drop)
+
+        if (
+            stationary
+            and sitting_prob >= self.sitting_drop_min_sit_prob
+            and model_not_strong_against_sit
+            and sitting_drop
+            and previous_label in {"STANDING", "SITTING", ""}
+        ):
+            reason = (
+                "upright_sitting_geometry_supported"
+                if point_geometry
+                else "geometry_sitting_drop_target_only"
+            )
+            info.update(
+                {
+                    "geometry_decision": "SITTING",
+                    "geometry_reason": reason,
+                }
+            )
+        elif stationary and margin > 0.0 and not sitting_drop:
+            info.update(
+                {
+                    "geometry_decision": "STANDING",
+                    "geometry_reason": "geometry_no_sitting_drop",
+                }
+            )
+
     def _final_label(
         self,
         *,
@@ -727,6 +1648,7 @@ class TiStylePoseManager:
         probabilities: dict[str, float],
         fall_gate_passed: bool,
         sitting_gate_passed: bool,
+        stand_sit: dict[str, Any],
     ) -> str:
         if not window_ready:
             return "WARMUP"
@@ -736,6 +1658,10 @@ class TiStylePoseManager:
             return "UNKNOWN"
 
         label = str(smoothed_label).upper()
+        if bool(stand_sit.get("active")):
+            resolved = str(stand_sit.get("resolved_label") or "").upper()
+            if resolved in {"STANDING", "SITTING", "UNKNOWN"}:
+                return resolved
         if label == "FALLING":
             if fall_gate_passed:
                 return "FALLING"
@@ -751,7 +1677,7 @@ class TiStylePoseManager:
                 return "MOVING"
             return "SITTING"
         if label == "WALKING":
-            return "MOVING" if motion_state == "MOVING" else "WALKING"
+            return "MOVING"
         if label == "STANDING" and motion_state == "MOVING":
             return "MOVING"
         if label == "STANDING":
@@ -760,34 +1686,26 @@ class TiStylePoseManager:
 
     def _display_requirements(self, candidate_label: str) -> tuple[int, float, float]:
         label = str(candidate_label).upper()
-        if label == "SITTING":
-            return (
-                self.sitting_stability_frames,
-                self.sitting_stability_ratio,
-                self.sitting_min_confidence,
-            )
-        if label == "STANDING":
-            return (
-                min(12, self.display_stability_frames),
-                self.display_stability_ratio,
-                self.standing_min_confidence,
-            )
-        if label == "LYING":
-            return (
-                min(10, self.display_stability_frames),
-                0.60,
-                self.lying_min_confidence,
-            )
+        if label == "WALKING":
+            label = "MOVING"
         if label == "FALLING":
             required = (
-                self.fall_stability_frames
+                self.pose_stability_frames_by_pose["FALLING"]
                 if self.falling_fast_update
                 else self.display_stability_frames
             )
-            return required, self.display_stability_ratio, self.display_min_confidence
-        if label == "MOVING":
-            return self.moving_confirm_frames, self.display_stability_ratio, 0.0
-        return self.display_stability_frames, self.display_stability_ratio, 0.0
+        else:
+            required = self.pose_stability_frames_by_pose.get(
+                label, self.display_stability_frames
+            )
+        min_confidence = self.pose_min_confidence_by_pose.get(
+            label, self.display_min_confidence
+        )
+        if label == "SITTING":
+            required_ratio = self.sitting_stability_ratio
+        else:
+            required_ratio = self.display_stability_ratio
+        return required, required_ratio, min_confidence
 
     def _update_display_state(
         self,
@@ -798,6 +1716,15 @@ class TiStylePoseManager:
         window_ready: bool,
         prediction_exists: bool,
         horizontal_speed: float,
+        motion_state: str,
+        raw_label: str,
+        smoothed_label: str,
+        target_position: tuple[float, float, float],
+        range_m: float | None,
+        range_zone: str,
+        quality: str,
+        geom_quality: str,
+        stand_sit: dict[str, Any],
         fall_gate_passed: bool,
         fall_gate_reason: str,
         sitting_gate_passed: bool,
@@ -805,16 +1732,29 @@ class TiStylePoseManager:
     ) -> dict[str, Any]:
         candidate = str(candidate_label or "UNKNOWN").upper()
         confidence = float(candidate_confidence or 0.0)
+        moving_override_required = int(
+            self._zone_value(self.moving_override_frames_by_zone, range_zone, 4)
+        )
 
         if not window_ready:
             self.display_history.pop(int(tid), None)
             self.display_state.pop(int(tid), None)
+            self.moving_override_history.pop(int(tid), None)
+            self.stand_to_sit_gate_history.pop(int(tid), None)
+            self.sit_to_stand_recovery_history.pop(int(tid), None)
             return {
                 "displayed_label": "WARMUP",
                 "displayed_confidence": 0.0,
                 "display_stability_count": 0,
                 "display_stability_required": self.display_stability_frames,
                 "display_stability_ratio": 0.0,
+                "candidate_stable_count": 0,
+                "pose_min_confidence": 0.0,
+                "pose_required_frames": self.display_stability_frames,
+                "stand_sit_required_frames": 0,
+                "stand_sit_stable_count": 0,
+                "moving_override_stable_count": 0,
+                "moving_override_required": moving_override_required,
                 "display_status": "WARMUP",
                 "transition_reason": "warming_up",
             }
@@ -826,6 +1766,13 @@ class TiStylePoseManager:
                 "display_stability_count": 0,
                 "display_stability_required": self.display_stability_frames,
                 "display_stability_ratio": 0.0,
+                "candidate_stable_count": 0,
+                "pose_min_confidence": 0.0,
+                "pose_required_frames": self.display_stability_frames,
+                "stand_sit_required_frames": 0,
+                "stand_sit_stable_count": 0,
+                "moving_override_stable_count": 0,
+                "moving_override_required": moving_override_required,
                 "display_status": "NO_POSE",
                 "transition_reason": "no_prediction",
             }
@@ -841,28 +1788,235 @@ class TiStylePoseManager:
                 "display_stability_count": 1,
                 "display_stability_required": 1,
                 "display_stability_ratio": 1.0,
+                "candidate_stable_count": 1,
+                "pose_min_confidence": 0.0,
+                "pose_required_frames": 1,
+                "stand_sit_required_frames": 1 if candidate in {"STANDING", "SITTING"} else 0,
+                "stand_sit_stable_count": 1 if candidate in {"STANDING", "SITTING"} else 0,
+                "moving_override_stable_count": 0,
+                "moving_override_required": moving_override_required,
                 "display_status": "STABLE",
                 "transition_reason": "hysteresis_disabled",
             }
 
+        previous = self.display_state.get(int(tid))
+        previous_label = str((previous or {}).get("label", "")).upper()
+        stand_sit_active = bool(stand_sit.get("active"))
+        moving_override_count = 0
+        moving_override_reason = ""
+        stand_to_sit_gate = "NA"
+        stand_to_sit_conf = 0.0
+        stand_to_sit_margin = 0.0
+        stand_to_sit_count = 0
+        stand_to_sit_required = self.stand_to_sit_frames
+        stand_to_sit_quality_ok = False
+        sit_to_stand_recovery_count = 0
+        sit_to_stand_recovery_required = self.sit_to_stand_recovery_frames
+        sit_to_stand_recovery_forced = False
+        translation = self._translation_evidence(
+            tid=tid,
+            target_position=target_position,
+            horizontal_speed=horizontal_speed,
+            motion_state=motion_state,
+            raw_label=raw_label,
+            smoothed_label=smoothed_label,
+        )
+        strong_margin = float(
+            self._zone_value(self.strong_stand_sit_margin_by_zone, range_zone, 0.18)
+        )
+        stand_sit_decision = str(stand_sit.get("decision", "")).upper()
+        stand_sit_margin = abs(float(stand_sit.get("margin", 0.0) or 0.0))
+        strong_stand_sit = (
+            stand_sit_decision in {"STANDING", "SITTING"}
+            and stand_sit_margin >= strong_margin
+        )
+        in_stand_sit_context = (
+            previous_label in {"STANDING", "SITTING"}
+            or candidate in {"STANDING", "SITTING"}
+            or (stand_sit_active and str(stand_sit.get("resolved_label", "")).upper() in {"STANDING", "SITTING"})
+        )
+        if in_stand_sit_context:
+            motion_evidence = (
+                float(horizontal_speed or 0.0) > self.moving_speed_threshold
+                or str(motion_state).upper() == "MOVING"
+            )
+            motion_history = self.moving_override_history[int(tid)]
+            motion_history.append(bool(motion_evidence))
+            for value in reversed(motion_history):
+                if not value:
+                    break
+                moving_override_count += 1
+            if motion_evidence and candidate == "MOVING" and previous_label in {"STANDING", "SITTING"}:
+                if (
+                    strong_stand_sit
+                    and self.moving_require_translation
+                    and not translation["confirmed"]
+                ):
+                    candidate = str(stand_sit.get("resolved_label") or previous_label)
+                    confidence = max(
+                        confidence,
+                        float(previous.get("confidence", confidence) or 0.0),
+                    )
+                    moving_override_reason = "moving_override_speed_only_rejected"
+                elif moving_override_count >= moving_override_required:
+                    moving_override_reason = (
+                        "moving_override_translation_confirmed"
+                        if translation["confirmed"]
+                        else "moving_override_sustained"
+                    )
+                else:
+                    candidate = previous_label
+                    confidence = float(previous.get("confidence", confidence) or 0.0)
+                    moving_override_reason = "moving_override_waiting"
+            elif motion_evidence and candidate in {"STANDING", "SITTING"}:
+                if (
+                    strong_stand_sit
+                    and self.moving_require_translation
+                    and not translation["confirmed"]
+                ):
+                    moving_override_reason = "moving_override_blocked_by_strong_stand_sit"
+                elif moving_override_count >= moving_override_required:
+                    candidate = "MOVING"
+                    confidence = max(confidence, self.moving_min_confidence)
+                    moving_override_reason = (
+                        "moving_override_translation_confirmed"
+                        if translation["confirmed"]
+                        else "moving_override_sustained"
+                    )
+                else:
+                    moving_override_reason = "moving_override_waiting"
+        else:
+            self.moving_override_history.pop(int(tid), None)
+
+        standing_prob = self._probability(
+            stand_sit.get("probabilities", {}), "STANDING"
+        )
+        sitting_prob = self._probability(stand_sit.get("probabilities", {}), "SITTING")
+        if not standing_prob and not sitting_prob:
+            standing_prob = float(stand_sit.get("standing_prob", 0.0) or 0.0)
+            sitting_prob = float(stand_sit.get("sitting_prob", 0.0) or 0.0)
+
+        if previous_label == "SITTING":
+            recovery_margin = standing_prob - sitting_prob
+            recovery_evidence = recovery_margin >= self.sit_to_stand_recovery_margin
+            if not recovery_evidence and standing_prob <= 0.0 and sitting_prob <= 0.0:
+                recovery_evidence = (
+                    str(smoothed_label).upper() == "STANDING"
+                    and confidence >= self.display_min_confidence
+                ) or (
+                    str(raw_label).upper() == "STANDING"
+                    and confidence >= self.display_min_confidence
+                )
+            recovery_history = self.sit_to_stand_recovery_history[int(tid)]
+            recovery_history.append(bool(recovery_evidence))
+            for value in reversed(recovery_history):
+                if not value:
+                    break
+                sit_to_stand_recovery_count += 1
+            if sit_to_stand_recovery_count >= sit_to_stand_recovery_required:
+                candidate = "STANDING"
+                confidence = max(
+                    confidence,
+                    standing_prob,
+                    float(previous.get("confidence", 0.0) or 0.0),
+                )
+                sit_to_stand_recovery_forced = True
+        else:
+            self.sit_to_stand_recovery_history.pop(int(tid), None)
+
+        if previous_label == "STANDING" and candidate == "SITTING":
+            blocked_quality_values = {"NO_POINTS", "TARGET_ONLY", "NO_ASSOC_POINTS"}
+            observed_quality = {
+                str(quality or "").upper(),
+                str(geom_quality or "").upper(),
+            }
+            stand_to_sit_quality_ok = (
+                self.stand_to_sit_allow_target_only
+                or not bool(observed_quality & blocked_quality_values)
+            )
+            stand_to_sit_conf = max(confidence, sitting_prob)
+            stand_to_sit_margin = sitting_prob - standing_prob
+            conf_ok = stand_to_sit_conf >= self.stand_to_sit_min_confidence
+            margin_ok = stand_to_sit_margin >= self.stand_to_sit_margin
+            gate_evidence = bool(stand_to_sit_quality_ok and conf_ok and margin_ok)
+            gate_history = self.stand_to_sit_gate_history[int(tid)]
+            gate_history.append(gate_evidence)
+            for value in reversed(gate_history):
+                if not value:
+                    break
+                stand_to_sit_count += 1
+            if not stand_to_sit_quality_ok:
+                stand_to_sit_gate = "BLOCK"
+                moving_override_reason = "stand_to_sit_blocked_target_only"
+                candidate = previous_label
+                confidence = float(previous.get("confidence", confidence) or 0.0)
+            elif not conf_ok:
+                stand_to_sit_gate = "BLOCK"
+                moving_override_reason = "stand_to_sit_blocked_confidence"
+                candidate = previous_label
+                confidence = float(previous.get("confidence", confidence) or 0.0)
+            elif not margin_ok:
+                stand_to_sit_gate = "BLOCK"
+                moving_override_reason = "stand_to_sit_blocked_margin"
+                candidate = previous_label
+                confidence = float(previous.get("confidence", confidence) or 0.0)
+            elif stand_to_sit_count < stand_to_sit_required:
+                stand_to_sit_gate = "WAIT"
+                moving_override_reason = "stand_to_sit_waiting_gate"
+                candidate = previous_label
+                confidence = float(previous.get("confidence", confidence) or 0.0)
+            else:
+                stand_to_sit_gate = "PASS"
+                moving_override_reason = "stand_to_sit_gate_passed"
+        else:
+            self.stand_to_sit_gate_history.pop(int(tid), None)
+
         history = self.display_history[int(tid)]
         history.append((candidate, confidence))
 
-        required, required_ratio, min_confidence = self._display_requirements(candidate)
+        required, _required_ratio, min_confidence = self._display_requirements(candidate)
+        stand_sit_required = 0
+        if stand_sit_active and candidate in {"STANDING", "SITTING"}:
+            stand_sit_required = self._stand_sit_transition_frames(
+                previous_label, candidate, range_zone
+            )
+            required = stand_sit_required
+            min_confidence = 0.0
         required = max(1, int(required))
         window_len = max(required, self.display_stability_frames)
         recent = list(history)[-window_len:]
         labels = [label for label, _conf in recent]
-        count = labels.count(candidate)
-        ratio = float(count) / float(len(recent)) if recent else 0.0
+        window_count = labels.count(candidate)
+        count = 0
+        for label in reversed(labels):
+            if label != candidate:
+                break
+            count += 1
         enough_samples = len(recent) >= required
+        if moving_override_reason in {
+            "moving_override_sustained",
+            "moving_override_translation_confirmed",
+        } and candidate == "MOVING":
+            required = moving_override_required
+            count = moving_override_count
+            enough_samples = moving_override_count >= required
+        if stand_to_sit_gate == "PASS" and candidate == "SITTING":
+            required = stand_to_sit_required
+            count = stand_to_sit_count
+            enough_samples = stand_to_sit_count >= required
+            min_confidence = 0.0
+        if sit_to_stand_recovery_forced and candidate == "STANDING":
+            required = sit_to_stand_recovery_required
+            count = sit_to_stand_recovery_count
+            enough_samples = sit_to_stand_recovery_count >= required
+            min_confidence = 0.0
         confidence_ok = confidence >= min_confidence
         gate_ok = True
         gate_reason = ""
         if candidate == "FALLING":
             gate_ok = bool(fall_gate_passed)
             gate_reason = fall_gate_reason
-        elif candidate == "SITTING":
+        elif candidate == "SITTING" and not stand_sit_active:
             gate_ok = bool(sitting_gate_passed)
             gate_reason = sitting_gate_reason
         elif candidate == "MOVING" and horizontal_speed <= self.moving_speed_threshold:
@@ -873,10 +2027,9 @@ class TiStylePoseManager:
             gate_ok
             and confidence_ok
             and enough_samples
-            and (count >= required or ratio >= required_ratio)
+            and count >= required
         )
 
-        previous = self.display_state.get(int(tid))
         if candidate_stable:
             self.display_state[int(tid)] = {
                 "label": candidate,
@@ -885,29 +2038,78 @@ class TiStylePoseManager:
             displayed_label = candidate
             displayed_confidence = confidence
             status = "STABLE"
-            transition_reason = "stable_update"
+            if moving_override_reason in {
+                "moving_override_sustained",
+                "moving_override_translation_confirmed",
+            }:
+                transition_reason = moving_override_reason
+            elif stand_to_sit_gate == "PASS" and candidate == "SITTING":
+                transition_reason = "stand_to_sit_gate_passed"
+            elif sit_to_stand_recovery_forced and candidate == "STANDING":
+                transition_reason = "sit_to_stand_recovery"
+            elif stand_to_sit_gate in {"BLOCK", "WAIT"}:
+                transition_reason = moving_override_reason
+            elif stand_sit_active and candidate in {"STANDING", "SITTING"}:
+                if stand_sit.get("decision") == "HOLD":
+                    transition_reason = "stand_sit_hold_previous_ambiguous"
+                elif previous_label and previous_label != candidate:
+                    transition_reason = "stand_sit_hysteresis_update"
+                else:
+                    transition_reason = str(stand_sit.get("reason") or "stand_sit_hysteresis_update")
+            else:
+                transition_reason = "pose_specific_stable_update"
         elif previous is None:
             displayed_label = candidate
             displayed_confidence = confidence
             status = "PENDING"
-            if not gate_ok:
+            if moving_override_reason in {
+                "moving_override_waiting",
+                "moving_override_blocked_by_strong_stand_sit",
+                "moving_override_speed_only_rejected",
+                "stand_to_sit_blocked_target_only",
+                "stand_to_sit_blocked_margin",
+                "stand_to_sit_blocked_confidence",
+                "stand_to_sit_waiting_gate",
+            }:
+                transition_reason = moving_override_reason
+            elif not gate_ok:
                 transition_reason = f"gate_blocked:{gate_reason}"
             elif not confidence_ok:
-                transition_reason = "confidence_below_min"
+                transition_reason = "confidence_below_pose_min"
+            elif stand_sit_active and candidate in {"STANDING", "SITTING"}:
+                transition_reason = "stand_sit_waiting_hysteresis"
             else:
                 transition_reason = "pending_start"
         else:
             displayed_label = str(previous.get("label", candidate))
             displayed_confidence = float(previous.get("confidence", confidence) or 0.0)
             status = "PENDING" if candidate != displayed_label else "STABLE"
-            if not gate_ok:
+            if moving_override_reason in {
+                "moving_override_waiting",
+                "moving_override_blocked_by_strong_stand_sit",
+                "moving_override_speed_only_rejected",
+                "stand_to_sit_blocked_target_only",
+                "stand_to_sit_blocked_margin",
+                "stand_to_sit_blocked_confidence",
+                "stand_to_sit_waiting_gate",
+            }:
+                transition_reason = moving_override_reason
+            elif not gate_ok:
                 transition_reason = f"gate_blocked:{gate_reason}"
             elif not confidence_ok:
-                transition_reason = "confidence_below_min"
+                transition_reason = "confidence_below_pose_min"
             elif not enough_samples:
-                transition_reason = "waiting_for_samples"
-            elif count < required and ratio < required_ratio:
-                transition_reason = "waiting_for_stability"
+                transition_reason = (
+                    "stand_sit_waiting_hysteresis"
+                    if stand_sit_active and candidate in {"STANDING", "SITTING"}
+                    else "waiting_for_samples"
+                )
+            elif count < required:
+                transition_reason = (
+                    "stand_sit_waiting_hysteresis"
+                    if stand_sit_active and candidate in {"STANDING", "SITTING"}
+                    else "waiting_for_pose_specific_stability"
+                )
             else:
                 transition_reason = "keep_previous"
 
@@ -916,10 +2118,134 @@ class TiStylePoseManager:
             "displayed_confidence": displayed_confidence,
             "display_stability_count": count,
             "display_stability_required": required,
-            "display_stability_ratio": ratio,
+            "display_stability_ratio": (
+                float(window_count) / float(len(recent)) if recent else 0.0
+            ),
+            "candidate_stable_count": count,
+            "pose_min_confidence": min_confidence,
+            "pose_required_frames": required,
+            "stand_sit_required_frames": stand_sit_required,
+            "stand_sit_stable_count": count if stand_sit_active and candidate in {"STANDING", "SITTING"} else 0,
+            "moving_override_stable_count": moving_override_count,
+            "moving_override_required": moving_override_required,
+            "moving_override_reason": moving_override_reason,
+            "moving_translation_displacement_m": translation["displacement_m"],
+            "moving_translation_confirmed": translation["confirmed"],
+            "strong_stand_sit": strong_stand_sit,
+            "strong_stand_sit_margin": strong_margin,
+            "stand_to_sit_gate": stand_to_sit_gate,
+            "stand_to_sit_conf": stand_to_sit_conf,
+            "stand_to_sit_margin": stand_to_sit_margin,
+            "stand_to_sit_stable_count": stand_to_sit_count,
+            "stand_to_sit_required": stand_to_sit_required,
+            "stand_to_sit_quality_ok": stand_to_sit_quality_ok,
+            "sit_to_stand_recovery_count": sit_to_stand_recovery_count,
+            "sit_to_stand_recovery_required": sit_to_stand_recovery_required,
             "display_status": status,
             "transition_reason": transition_reason,
         }
+
+    def _translation_evidence(
+        self,
+        *,
+        tid: int,
+        target_position: tuple[float, float, float],
+        horizontal_speed: float,
+        motion_state: str,
+        raw_label: str,
+        smoothed_label: str,
+    ) -> dict[str, Any]:
+        history = self.translation_history[int(tid)]
+        position = tuple(float(value) for value in target_position)
+        history.append(position)
+        displacement = 0.0
+        if len(history) >= 2:
+            first = history[0]
+            last = history[-1]
+            displacement = math.sqrt(
+                (last[0] - first[0]) ** 2
+                + (last[1] - first[1]) ** 2
+                + (last[2] - first[2]) ** 2
+            )
+        label_motion = str(raw_label).upper() in {"MOVING", "WALKING"} or str(
+            smoothed_label
+        ).upper() in {"MOVING", "WALKING"}
+        velocity_confirmed = str(motion_state).upper() == "MOVING"
+        displacement_confirmed = (
+            len(history) >= self.moving_translation_window
+            and displacement >= self.moving_translation_min_m
+        )
+        high_speed = (
+            float(horizontal_speed or 0.0) >= self.moving_speed_threshold * 1.5
+        )
+        confirmed = bool(
+            displacement_confirmed
+            or (velocity_confirmed and (label_motion or high_speed))
+        )
+        return {
+            "confirmed": confirmed,
+            "displacement_m": float(displacement),
+            "label_motion": label_motion,
+            "velocity_confirmed": velocity_confirmed,
+        }
+
+    def _update_standing_baseline(
+        self,
+        *,
+        tid: int,
+        displayed_label: str,
+        stand_sit: dict[str, Any],
+        geometry: dict[str, Any],
+        target: dict[str, float],
+        range_m: float,
+        horizontal_speed: float,
+        motion_state: str,
+    ) -> None:
+        if not self.use_standing_baseline:
+            return
+        if str(displayed_label).upper() != "STANDING":
+            return
+        if str(stand_sit.get("decision", "")).upper() != "STANDING":
+            return
+        if float(horizontal_speed or 0.0) > self.sitting_max_speed:
+            return
+        if str(motion_state).upper() == "MOVING":
+            return
+
+        top_z = _optional_float(geometry.get("geom_top_z"))
+        centroid_z = _optional_float(geometry.get("geom_centroid_z"))
+        height_extent = _optional_float(geometry.get("geom_height"))
+        target_z = _optional_float(target.get("pos_z"))
+        if top_z is None and target_z is None:
+            return
+
+        state = self.standing_baseline.setdefault(
+            int(tid),
+            {
+                "frames": 0,
+                "top_z": top_z if top_z is not None else target_z,
+                "centroid_z": centroid_z if centroid_z is not None else target_z,
+                "height_extent": height_extent,
+                "target_z": target_z,
+                "range_m": float(range_m or 0.0),
+                "confidence": float(stand_sit.get("candidate_confidence", 0.0) or 0.0),
+            },
+        )
+        frames = int(state.get("frames", 0) or 0) + 1
+        alpha = 0.15 if frames > 1 else 1.0
+        for key, value in (
+            ("top_z", top_z if top_z is not None else target_z),
+            ("centroid_z", centroid_z if centroid_z is not None else target_z),
+            ("height_extent", height_extent),
+            ("target_z", target_z),
+            ("range_m", float(range_m or 0.0)),
+            ("confidence", float(stand_sit.get("candidate_confidence", 0.0) or 0.0)),
+        ):
+            if value is None:
+                continue
+            previous = _optional_float(state.get(key))
+            state[key] = float(value) if previous is None else previous * (1.0 - alpha) + float(value) * alpha
+        state["frames"] = frames
 
     def _label_z_for_pose(self, final_label: str, target_height: float) -> float:
         label = str(final_label).upper()
@@ -968,23 +2294,71 @@ class TiStylePoseManager:
         )
         for tid in sorted(results):
             item = results[tid]
+            range_m = item.get("range_m")
+            range_text = f"{range_m:.2f}" if isinstance(range_m, (int, float)) else "NA"
             print(
                 "[pose] "
                 f"tid={tid} idx={item.get('track_index', '-')} "
                 f"assoc={item.get('assoc_mode', '-')} "
+                f"points_total={item.get('points_total', 0)} "
+                f"geom_pts={item.get('geom_pts', item['num_points'])} "
+                f"geom_quality={item.get('geom_quality', '-')} "
                 f"pts={item['num_points']} window={item['window_count']}/8 "
                 f"raw={item['raw_label']} {item['raw_confidence']:.2f} "
                 f"smooth={item['smoothed_label']} {item['smoothed_confidence']:.2f} "
                 f"cand={item.get('candidate_label', item['final_label'])} "
                 f"display={item.get('displayed_label', item['final_label'])} "
-                f"stable={item.get('display_stability_count', 0)}/"
-                f"{item.get('display_stability_required', self.display_stability_frames)} "
+                f"candidate_conf={item.get('candidate_confidence', 0.0):.2f} "
+                f"candidate_stable={item.get('candidate_stable_count', item.get('display_stability_count', 0))}/"
+                f"{item.get('pose_required_frames', item.get('display_stability_required', self.display_stability_frames))} "
+                f"pose_min_conf={item.get('pose_min_confidence', 0.0):.2f} "
+                f"pose_required_frames={item.get('pose_required_frames', item.get('display_stability_required', self.display_stability_frames))} "
+                f"stand_prob={item.get('stand_prob', 0.0):.2f} "
+                f"sit_prob={item.get('sit_prob', 0.0):.2f} "
+                f"stand_sit_margin={item.get('stand_sit_margin', 0.0):.2f} "
+                f"stand_sit_zone={item.get('stand_sit_zone', item.get('range_zone', 'unknown'))} "
+                f"stand_sit_decision={item.get('stand_sit_decision', 'NA')} "
+                f"stand_sit_required_frames={item.get('stand_sit_required_frames', 0)} "
+                f"stand_sit_stable={item.get('stand_sit_stable_count', 0)}/"
+                f"{item.get('stand_sit_required_frames', 0)} "
+                f"moving_override_stable={item.get('moving_override_stable_count', 0)}/"
+                f"{item.get('moving_override_required', 0)} "
+                f"moving_override_reason={item.get('moving_override_reason', '')} "
+                f"translation_m={_fmt_float(item.get('moving_translation_displacement_m'))} "
+                f"translation_confirmed={item.get('moving_translation_confirmed', False)} "
+                f"stand_to_sit_gate={item.get('stand_to_sit_gate', 'NA')} "
+                f"stand_to_sit_conf={item.get('stand_to_sit_conf', 0.0):.2f} "
+                f"stand_to_sit_margin={item.get('stand_to_sit_margin', 0.0):.2f} "
+                f"stand_to_sit_stable={item.get('stand_to_sit_stable_count', 0)}/"
+                f"{item.get('stand_to_sit_required', 0)} "
+                f"stand_to_sit_quality_ok={item.get('stand_to_sit_quality_ok', False)} "
+                f"sit_to_stand_recovery={item.get('sit_to_stand_recovery_count', 0)}/"
+                f"{item.get('sit_to_stand_recovery_required', 0)} "
+                f"range_m={range_text} "
+                f"range_zone={item.get('range_zone', 'unknown')} "
+                f"geom_centroid_z={_fmt_float(item.get('geom_centroid_z'))} "
+                f"geom_top_z={_fmt_float(item.get('geom_top_z'))} "
+                f"geom_bottom_z={_fmt_float(item.get('geom_bottom_z'))} "
+                f"geom_height={_fmt_float(item.get('geom_height'))} "
+                f"target_z={_fmt_float(item.get('target_z'))} "
+                f"floor_z={_fmt_float(item.get('floor_z'))} "
+                f"cal_target_z={_fmt_float(item.get('cal_target_z'))} "
+                f"baseline_ready={item.get('baseline_ready', False)} "
+                f"baseline_frames={item.get('baseline_frames', 0)} "
+                f"baseline_top_z={_fmt_float(item.get('baseline_top_z'))} "
+                f"baseline_centroid_z={_fmt_float(item.get('baseline_centroid_z'))} "
+                f"height_drop={_fmt_float(item.get('height_drop_from_baseline'))} "
+                f"centroid_drop={_fmt_float(item.get('centroid_drop'))} "
+                f"target_z_drop={_fmt_float(item.get('target_z_drop'))} "
+                f"geometry_decision={item.get('geometry_decision', 'NA')} "
+                f"geometry_reason={item.get('geometry_reason', 'NA')} "
                 f"status={item.get('display_status', '')} "
                 f"fall={item.get('fall_gate_passed', False)}:"
                 f"{item.get('fall_gate_reason', '')} "
                 f"sit={item.get('sitting_gate_passed', False)}:"
                 f"{item.get('sitting_gate_reason', '')} "
                 f"reason={item.get('transition_reason', '')} "
+                f"final_reason={item.get('final_reason', item.get('transition_reason', ''))} "
                 f"quality={item['quality']}",
                 flush=True,
             )
@@ -1009,9 +2383,24 @@ class TiStylePoseManager:
             "horizontal_speed",
             "vertical_speed",
             "height_drop",
+            "range_m",
+            "range_zone",
             "num_points",
             "track_index",
             "assoc_mode",
+            "points_total",
+            "points_by_target_index",
+            "points_by_nearest",
+            "geom_pts",
+            "geom_quality",
+            "geom_centroid_z",
+            "geom_top_z",
+            "geom_bottom_z",
+            "geom_height",
+            "geom_floor_centroid_z",
+            "target_z",
+            "cal_target_z",
+            "floor_z",
             "selected_num_points",
             "quality",
             "low_quality",
@@ -1033,6 +2422,42 @@ class TiStylePoseManager:
             "display_stability_count",
             "display_stability_required",
             "display_stability_ratio",
+            "candidate_stable_count",
+            "pose_min_confidence",
+            "pose_required_frames",
+            "stand_prob",
+            "sit_prob",
+            "stand_sit_margin",
+            "stand_sit_zone",
+            "stand_sit_decision",
+            "stand_sit_reason",
+            "stand_sit_strong",
+            "stand_sit_strong_margin",
+            "stand_sit_required_frames",
+            "stand_sit_stable_count",
+            "moving_override_stable_count",
+            "moving_override_required",
+            "moving_override_reason",
+            "moving_translation_displacement_m",
+            "moving_translation_confirmed",
+            "stand_to_sit_gate",
+            "stand_to_sit_conf",
+            "stand_to_sit_margin",
+            "stand_to_sit_stable_count",
+            "stand_to_sit_required",
+            "stand_to_sit_quality_ok",
+            "sit_to_stand_recovery_count",
+            "sit_to_stand_recovery_required",
+            "baseline_ready",
+            "baseline_frames",
+            "baseline_top_z",
+            "baseline_centroid_z",
+            "height_drop_from_baseline",
+            "centroid_drop",
+            "target_z_drop",
+            "geometry_decision",
+            "geometry_reason",
+            "geometry_range_threshold",
             "display_status",
             "transition_reason",
             "fall_gate_passed",
@@ -1087,11 +2512,54 @@ class TiStylePoseManager:
             "falling_stability_frames": self.falling_stability_frames,
             "fall_stability_frames": self.fall_stability_frames,
             "sitting_stability_frames": self.sitting_stability_frames,
+            "standing_stability_frames": self.standing_stability_frames,
+            "lying_stability_frames": self.lying_stability_frames,
+            "moving_stability_frames": self.moving_stability_frames,
+            "unknown_stability_frames": self.unknown_stability_frames,
             "sitting_stability_ratio": self.sitting_stability_ratio,
             "sitting_min_confidence": self.sitting_min_confidence,
             "sitting_max_speed": self.sitting_max_speed,
             "standing_min_confidence": self.standing_min_confidence,
             "lying_min_confidence": self.lying_min_confidence,
+            "falling_min_confidence": self.falling_min_confidence,
+            "moving_min_confidence": self.moving_min_confidence,
+            "pose_min_confidence_by_pose": self.pose_min_confidence_by_pose,
+            "pose_stability_frames_by_pose": self.pose_stability_frames_by_pose,
+            "range_near_max": self.range_near_max,
+            "range_mid_max": self.range_mid_max,
+            "stand_sit_margin_by_zone": self.stand_sit_margin_by_zone,
+            "stand_to_sit_frames_by_zone": self.stand_to_sit_frames_by_zone,
+            "sit_to_stand_frames_by_zone": self.sit_to_stand_frames_by_zone,
+            "unknown_to_stand_sit_frames_by_zone": self.unknown_to_stand_sit_frames_by_zone,
+            "moving_override_frames_by_zone": self.moving_override_frames_by_zone,
+            "strong_stand_sit_margin_by_zone": self.strong_stand_sit_margin_by_zone,
+            "moving_require_translation": self.moving_require_translation,
+            "moving_translation_window": self.moving_translation_window,
+            "moving_translation_min_m": self.moving_translation_min_m,
+            "sensor_height_m": self.sensor_height_m,
+            "sensor_pitch_deg": self.sensor_pitch_deg,
+            "sensor_roll_deg": self.sensor_roll_deg,
+            "sensor_yaw_deg": self.sensor_yaw_deg,
+            "use_sensor_calibration": self.use_sensor_calibration,
+            "floor_z_m": self.floor_z_m,
+            "assoc_method": self.assoc_method,
+            "assoc_nearest_radius_m": self.assoc_nearest_radius_m,
+            "assoc_nearest_z_min": self.assoc_nearest_z_min,
+            "assoc_nearest_z_max": self.assoc_nearest_z_max,
+            "assoc_min_points_good": self.assoc_min_points_good,
+            "use_standing_baseline": self.use_standing_baseline,
+            "standing_baseline_min_frames": self.standing_baseline_min_frames,
+            "sitting_drop_by_zone": self.sitting_drop_by_zone,
+            "sitting_drop_min_sit_prob": self.sitting_drop_min_sit_prob,
+            "sitting_drop_centroid_m": self.sitting_drop_centroid_m,
+            "sitting_drop_top_m": self.sitting_drop_top_m,
+            "sitting_drop_target_z_m": self.sitting_drop_target_z_m,
+            "stand_to_sit_min_confidence": self.stand_to_sit_min_confidence,
+            "stand_to_sit_margin": self.stand_to_sit_margin,
+            "stand_to_sit_frames": self.stand_to_sit_frames,
+            "stand_to_sit_allow_target_only": self.stand_to_sit_allow_target_only,
+            "sit_to_stand_recovery_margin": self.sit_to_stand_recovery_margin,
+            "sit_to_stand_recovery_frames": self.sit_to_stand_recovery_frames,
             "ground_z": self.ground_z,
             "human_model_target_height": self.human_model_target_height,
             "human_model_target_sitting_height": self.human_model_target_sitting_height,
@@ -1128,9 +2596,24 @@ class TiStylePoseManager:
                     "horizontal_speed": item["horizontal_speed"],
                     "vertical_speed": item["vertical_speed"],
                     "height_drop": item["height_drop"],
+                    "range_m": item.get("range_m", ""),
+                    "range_zone": item.get("range_zone", ""),
                     "num_points": item["num_points"],
                     "track_index": item.get("track_index", ""),
                     "assoc_mode": item.get("assoc_mode", ""),
+                    "points_total": item.get("points_total", ""),
+                    "points_by_target_index": item.get("points_by_target_index", ""),
+                    "points_by_nearest": item.get("points_by_nearest", ""),
+                    "geom_pts": item.get("geom_pts", ""),
+                    "geom_quality": item.get("geom_quality", ""),
+                    "geom_centroid_z": item.get("geom_centroid_z", ""),
+                    "geom_top_z": item.get("geom_top_z", ""),
+                    "geom_bottom_z": item.get("geom_bottom_z", ""),
+                    "geom_height": item.get("geom_height", ""),
+                    "geom_floor_centroid_z": item.get("geom_floor_centroid_z", ""),
+                    "target_z": item.get("target_z", ""),
+                    "cal_target_z": item.get("cal_target_z", ""),
+                    "floor_z": item.get("floor_z", ""),
                     "selected_num_points": item.get("selected_num_points", item["num_points"]),
                     "quality": item.get("quality", ""),
                     "low_quality": item["low_quality"],
@@ -1154,6 +2637,42 @@ class TiStylePoseManager:
                     "display_stability_count": item.get("display_stability_count", 0),
                     "display_stability_required": item.get("display_stability_required", self.display_stability_frames),
                     "display_stability_ratio": item.get("display_stability_ratio", 0.0),
+                    "candidate_stable_count": item.get("candidate_stable_count", item.get("display_stability_count", 0)),
+                    "pose_min_confidence": item.get("pose_min_confidence", 0.0),
+                    "pose_required_frames": item.get("pose_required_frames", item.get("display_stability_required", self.display_stability_frames)),
+                    "stand_prob": item.get("stand_prob", 0.0),
+                    "sit_prob": item.get("sit_prob", 0.0),
+                    "stand_sit_margin": item.get("stand_sit_margin", 0.0),
+                    "stand_sit_zone": item.get("stand_sit_zone", item.get("range_zone", "")),
+                    "stand_sit_decision": item.get("stand_sit_decision", "NA"),
+                    "stand_sit_reason": item.get("stand_sit_reason", ""),
+                    "stand_sit_strong": item.get("stand_sit_strong", False),
+                    "stand_sit_strong_margin": item.get("stand_sit_strong_margin", 0.0),
+                    "stand_sit_required_frames": item.get("stand_sit_required_frames", 0),
+                    "stand_sit_stable_count": item.get("stand_sit_stable_count", 0),
+                    "moving_override_stable_count": item.get("moving_override_stable_count", 0),
+                    "moving_override_required": item.get("moving_override_required", 0),
+                    "moving_override_reason": item.get("moving_override_reason", ""),
+                    "moving_translation_displacement_m": item.get("moving_translation_displacement_m", 0.0),
+                    "moving_translation_confirmed": item.get("moving_translation_confirmed", False),
+                    "stand_to_sit_gate": item.get("stand_to_sit_gate", "NA"),
+                    "stand_to_sit_conf": item.get("stand_to_sit_conf", 0.0),
+                    "stand_to_sit_margin": item.get("stand_to_sit_margin", 0.0),
+                    "stand_to_sit_stable_count": item.get("stand_to_sit_stable_count", 0),
+                    "stand_to_sit_required": item.get("stand_to_sit_required", 0),
+                    "stand_to_sit_quality_ok": item.get("stand_to_sit_quality_ok", False),
+                    "sit_to_stand_recovery_count": item.get("sit_to_stand_recovery_count", 0),
+                    "sit_to_stand_recovery_required": item.get("sit_to_stand_recovery_required", self.sit_to_stand_recovery_frames),
+                    "baseline_ready": item.get("baseline_ready", False),
+                    "baseline_frames": item.get("baseline_frames", 0),
+                    "baseline_top_z": item.get("baseline_top_z", ""),
+                    "baseline_centroid_z": item.get("baseline_centroid_z", ""),
+                    "height_drop_from_baseline": item.get("height_drop_from_baseline", ""),
+                    "centroid_drop": item.get("centroid_drop", ""),
+                    "target_z_drop": item.get("target_z_drop", ""),
+                    "geometry_decision": item.get("geometry_decision", "NA"),
+                    "geometry_reason": item.get("geometry_reason", "NA"),
+                    "geometry_range_threshold": item.get("geometry_range_threshold", 0.0),
                     "display_status": item.get("display_status", ""),
                     "transition_reason": item.get("transition_reason", ""),
                     "fall_gate_passed": item.get("fall_gate_passed", False),
@@ -1186,6 +2705,13 @@ def _percent_text(confidence: Any) -> str:
     return f"{percent:.1f}"
 
 
+def _fmt_float(value: Any) -> str:
+    number = _optional_float(value)
+    if number is None:
+        return "NA"
+    return f"{number:.2f}"
+
+
 def _rows(value: Any) -> list[list[float]]:
     if value is None:
         return []
@@ -1206,11 +2732,37 @@ def _rows(value: Any) -> list[list[float]]:
     return rows
 
 
+def _flat_values(value: Any) -> list[float]:
+    if value is None:
+        return []
+    try:
+        array = np.asarray(value).reshape(-1)
+    except Exception:
+        return []
+    values: list[float] = []
+    for item in array:
+        try:
+            values.append(float(item))
+        except Exception:
+            continue
+    return values
+
+
 def _float_at(row: list[float], index: int, default: float = 0.0) -> float:
     try:
         return float(row[index])
     except Exception:
         return float(default)
+
+
+def _optional_float(value: Any) -> float | None:
+    try:
+        number = float(value)
+    except Exception:
+        return None
+    if not math.isfinite(number):
+        return None
+    return number
 
 
 def _int_value(value: Any, default: int = 0) -> int:
