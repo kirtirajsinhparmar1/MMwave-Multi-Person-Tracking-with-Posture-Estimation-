@@ -595,7 +595,10 @@ def load_manual_segments(path: Path, expected: pd.DataFrame, ctx: Context, frame
     manual["duration_s"] = manual["end_time_s"] - manual["start_time_s"]
     manual["method"] = "manual"
     if "confidence" not in manual.columns:
-        manual["confidence"] = 1.0
+        if "label_confidence" in manual.columns:
+            manual["confidence"] = numeric(manual["label_confidence"]).fillna(1.0)
+        else:
+            manual["confidence"] = 1.0
     if "notes" not in manual.columns:
         manual["notes"] = ""
     merged = expected[["segment_id", "expected_order"]].merge(manual, on="segment_id", how="right")

@@ -1,0 +1,421 @@
+# Distance/Posture Benchmark Report
+
+## Executive summary
+- Session analyzed: `C:\Users\UBESC\Desktop\Combined MMwave and RGB\logs\sitting_relative_gate_refined_live_test`
+- Tracking: review required in leanback_5m, upright_5m, leanforward_1m, leanforward_2m, leanforward_3m, leanforward_4m, leanforward_5m.
+- Posture: weak for sitting. Standing accuracy was 95.681%, but sitting accuracy was 46.721%, with the worst failures in leanback_5m, upright_4m, leanback_4m.
+- Main failure: sitting is confused as STANDING, especially at 3m and 4m.
+- Range/calibration: no major range or continuity failure was detected.
+- Point-density: NO_POINTS is common in both standing and sitting, but only sitting collapses. Therefore the primary failure is sitting-vs-standing discrimination under sparse geometry, not general tracking loss.
+- Is sitting worse than standing? yes
+- Is 1m worse than 2m/3m/4m? no
+- Warning count: 0
+
+## Session analyzed
+| rank | path | modified_time_iso | useful_score | csv_count | notes |
+| --- | --- | --- | --- | --- | --- |
+| 1 | C:\Users\UBESC\Desktop\Combined MMwave and RGB\logs\sitting_relative_gate_refined_live_test | 2026-07-04 17:18:55 | 40 | 8 | useful files found |
+| 2 | C:\Users\UBESC\Desktop\Combined MMwave and RGB\mmwave_pose_ui_4ec2b00\logs\sitting_relative_gate_refined_live_test | 2026-07-04 17:18:52 | 7 | 1 | useful files found |
+| 3 | C:\Users\UBESC\Desktop\Combined MMwave and RGB\logs\sitting_ab_static_retention_cfg | 2026-07-04 15:42:14 | 40 | 8 | useful files found |
+| 4 | C:\Users\UBESC\Desktop\Combined MMwave and RGB\mmwave_pose_ui_4ec2b00\logs\sitting_ab_static_retention_cfg | 2026-07-04 15:42:14 | 7 | 1 | useful files found |
+| 5 | C:\Users\UBESC\Desktop\Combined MMwave and RGB\logs\sitting_ab_default_cfg | 2026-07-04 15:34:05 | 40 | 8 | useful files found |
+| 6 | C:\Users\UBESC\Desktop\Combined MMwave and RGB\mmwave_pose_ui_4ec2b00\logs\sitting_ab_default_cfg | 2026-07-04 15:34:05 | 7 | 1 | useful files found |
+| 7 | C:\Users\UBESC\Desktop\Combined MMwave and RGB\logs\session_20260703_205540 | 2026-07-04 01:05:03 | 40 | 8 | useful files found |
+| 8 | C:\Users\UBESC\Desktop\Combined MMwave and RGB\mmwave_pose_ui_4ec2b00\logs\external_camera_confirmed_retention_test | 2026-07-04 01:05:03 | 7 | 1 | useful files found |
+| 9 | C:\Users\UBESC\Desktop\Combined MMwave and RGB\logs\session_20260703_205014 | 2026-07-04 00:54:08 | 40 | 8 | useful files found |
+| 10 | C:\Users\UBESC\Desktop\Combined MMwave and RGB\logs\session_20260703_203646 | 2026-07-04 00:38:37 | 40 | 8 | useful files found |
+
+_Showing 10 of 37 rows._
+
+## Files discovered
+| file | exists | rows | time/frame column detected | notes |
+| --- | --- | --- | --- | --- |
+| mmwave_frames.csv | True | 28425 | host_wall_time_iso, host_monotonic_ns, mmwave_frame_num |  |
+| mmwave_tracks.csv | True | 20132 | host_wall_time_iso, host_monotonic_ns, mmwave_frame_num |  |
+| mmwave_pose.csv | True | 20132 | host_wall_time_iso, host_monotonic_ns, mmwave_frame_num |  |
+| pose_predictions_ui.csv | False | NA |  |  |
+| pose_ui_metadata.json | False | NA |  |  |
+| targets.csv | False | NA |  |  |
+| frames_summary.csv | False | NA |  |  |
+| rgb_frames.csv | True | 14050 | host_wall_time_iso, host_monotonic_ns, rgb_frame_num, frame_read_ok |  |
+| rgb_tracks.csv | True | 10354 | host_wall_time_iso, host_monotonic_ns, rgb_frame_num, time_since_update |  |
+| rgb_keypoints.csv | True | 134602 | host_wall_time_iso, host_monotonic_ns, rgb_frame_num |  |
+| sync_index.csv | True | 42475 | host_wall_time_iso, host_monotonic_ns, source_frame_num, latest_mmwave_frame_num, latest_mmwave_monotonic_ns, latest_rgb_frame_num |  |
+| events.csv | False | NA |  |  |
+| events.jsonl | True | 9 |  | 3473 bytes |
+| session_metadata.json | True | NA |  | 2346 bytes |
+| combined_events.csv | False | NA |  |  |
+| rgb_annotated.mp4 | True | NA |  | 120105558 bytes |
+| rgb_actions.csv | True | 0 | host_wall_time_iso, host_monotonic_ns, rgb_frame_num | extra discovered file |
+
+## Protocol and inferred/manual segments
+The expected order is standing 1m, 2m, 3m, 4m, then sitting 1m, 2m, 3m, 4m. Auto segmentation uses range plateaus when possible and equal-time fallback when uncertain.
+
+| segment_id | expected_order | session_id | expected_pose | expected_subpose | expected_distance_m | start_time_s | end_time_s | label_confidence | notes | duration_s | method | confidence | start_frame | end_frame |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| standing_1m | 1.0 | sitting_relative_gate_refined_live_test | STANDING | STANDING | 1.0 | 25.506 | 78.687 | 0.95 | auto range plateau; raw=21.51-82.69s; tol=0.35m; samples=1113 | 53.181 | manual | 0.95 | 465.0 | 1431.0 |
+| standing_2m | 2.0 | sitting_relative_gate_refined_live_test | STANDING | STANDING | 2.0 | 88.768 | 149.03 | 0.95 | auto range plateau; raw=84.77-153.03s; tol=0.35m; samples=1243 | 60.262 | manual | 0.95 | 1616.0 | 2710.0 |
+| standing_3m | 3.0 | sitting_relative_gate_refined_live_test | STANDING | STANDING | 3.0 | 168.96 | 231.854 | 0.95 | auto range plateau; raw=164.96-235.85s; tol=0.35m; samples=1289 | 62.894000000000005 | manual | 0.95 | 3073.0 | 4216.0 |
+| standing_4m | 4.0 | sitting_relative_gate_refined_live_test | STANDING | STANDING | 4.0 | 241.856 | 268.823 | 0.49 | auto range plateau; raw=237.86-272.82s; tol=0.35m; samples=637 | 26.966999999999985 | manual | 0.49 | 4399.0 | 4888.0 |
+| standing_5m | 5.0 | sitting_relative_gate_refined_live_test | STANDING | STANDING | 5.0 | 314.926 | 377.169 | 0.95 | auto range plateau; raw=310.93-381.17s; tol=0.35m; samples=1278 | 62.242999999999995 | manual | 0.95 | 5727.0 | 6858.0 |
+| leanback_1m | 6.0 | sitting_relative_gate_refined_live_test | SITTING | SITTING_LEAN_BACK | 1.0 | 406.98 | 435.014 | 0.51 | auto range plateau; raw=406.98-435.01s; tol=0.35m; samples=502 | 28.033999999999992 | manual | 0.51 | 7401.0 | 7909.0 |
+| leanback_2m | 7.0 | sitting_relative_gate_refined_live_test | SITTING | SITTING_LEAN_BACK | 2.0 | 471.363 | 497.291 | 0.471 | auto range plateau; raw=467.36-501.29s; tol=0.55m; samples=618 | 25.927999999999997 | manual | 0.471 | 8572.0 | 9042.0 |
+| leanback_3m | 8.0 | sitting_relative_gate_refined_live_test | SITTING | SITTING_LEAN_BACK | 3.0 | 555.618 | 584.079 | 0.517 | auto range plateau; raw=551.62-588.08s; tol=0.35m; samples=664 | 28.4609999999999 | manual | 0.517 | 10103.0 | 10620.0 |
+| leanback_4m | 9.0 | sitting_relative_gate_refined_live_test | SITTING | SITTING_LEAN_BACK | 4.0 | 637.99 | 674.837 | 0.67 | auto range plateau; raw=633.99-678.84s; tol=0.35m; samples=816 | 36.84699999999998 | manual | 0.67 | 11601.0 | 12270.0 |
+| leanback_5m | 10.0 | sitting_relative_gate_refined_live_test | SITTING | SITTING_LEAN_BACK | 5.0 | 712.573 | 746.749 | 0.621 | auto range plateau; raw=708.57-750.75s; tol=0.35m; samples=767 | 34.176000000000045 | manual | 0.621 | 12956.0 | 13577.0 |
+| upright_1m | 11.0 | sitting_relative_gate_refined_live_test | SITTING | SITTING_UPRIGHT | 1.0 | 789.929 | 855.717 | 0.95 | auto time-order fallback; range plateau not reliable; auto range plateau; raw=785.93-859.72s; tol=0.35m; samples=1342 | 65.78800000000001 | manual | 0.95 | 14363.0 | 15559.0 |
+| upright_2m | 12.0 | sitting_relative_gate_refined_live_test | SITTING | SITTING_UPRIGHT | 2.0 | 865.764 | 930.163 | 0.95 | auto time-order fallback; range plateau not reliable; auto range plateau; raw=861.76-934.16s; tol=0.35m; samples=1318 | 64.399 | manual | 0.95 | 15742.0 | 16912.0 |
+| upright_3m | 13.0 | sitting_relative_gate_refined_live_test | SITTING | SITTING_UPRIGHT | 3.0 | 940.195 | 1004.283 | 0.95 | auto time-order fallback; range plateau not reliable; auto range plateau; raw=936.20-1008.28s; tol=0.35m; samples=1312 | 64.08799999999997 | manual | 0.95 | 17095.0 | 18260.0 |
+| upright_4m | 14.0 | sitting_relative_gate_refined_live_test | SITTING | SITTING_UPRIGHT | 4.0 | 1016.474 | 1042.685 | 0.477 | auto time-order fallback; range plateau not reliable; auto range plateau; raw=1012.47-1046.68s; tol=0.35m; samples=623 | 26.2109999999999 | manual | 0.477 | 18483.0 | 18957.0 |
+| upright_5m | 15.0 | sitting_relative_gate_refined_live_test | SITTING | SITTING_UPRIGHT | 5.0 | 1155.993 | 1205.993 | 0.25 | auto time-order fallback; range plateau not reliable; auto time-order fallback; range plateau not reliable | 50.0 | manual | 0.25 | 21019.0 | 21927.0 |
+| leanforward_1m | 16.0 | sitting_relative_gate_refined_live_test | SITTING | SITTING_LEAN_FORWARD | 1.0 | 1207.996 | 1234.17 | 0.476 | auto time-order fallback; range plateau not reliable; auto range plateau; raw=1208.00-1234.17s; tol=0.35m; samples=475 | 26.173999999999978 | manual | 0.476 | 21964.0 | 22437.0 |
+| leanforward_2m | 17.0 | sitting_relative_gate_refined_live_test | SITTING | SITTING_LEAN_FORWARD | 2.0 | 1240.2 | 1278.767 | 0.701 | auto time-order fallback; range plateau not reliable; auto range plateau; raw=1236.20-1282.77s; tol=0.35m; samples=847 | 38.56700000000001 | manual | 0.701 | 22550.0 | 23250.0 |
+| leanforward_3m | 18.0 | sitting_relative_gate_refined_live_test | SITTING | SITTING_LEAN_FORWARD | 3.0 | 1318.334 | 1364.52 | 0.84 | auto time-order fallback; range plateau not reliable; auto range plateau; raw=1314.33-1368.52s; tol=0.35m; samples=986 | 46.18599999999992 | manual | 0.84 | 23970.0 | 24809.0 |
+| leanforward_4m | 19.0 | sitting_relative_gate_refined_live_test | SITTING | SITTING_LEAN_FORWARD | 4.0 | 1403.47 | 1432.177 | 0.522 | auto time-order fallback; range plateau not reliable; auto range plateau; raw=1403.47-1432.18s; tol=0.35m; samples=523 | 28.70699999999988 | manual | 0.522 | 25519.0 | 26039.0 |
+| leanforward_5m | 20.0 | sitting_relative_gate_refined_live_test | SITTING | SITTING_LEAN_FORWARD | 5.0 | 1480.633 | 1504.587 | 0.436 | auto time-order fallback; range plateau not reliable; auto range plateau; raw=1476.63-1508.59s; tol=0.35m; samples=582 | 23.95399999999995 | manual | 0.436 | 26921.0 | 27356.0 |
+
+## Segment verification required
+- Auto segments: `C:\Users\UBESC\Desktop\Combined MMwave and RGB\mmwave_pose_ui_4ec2b00\analysis_outputs\registry_analysis\sitting_relative_gate_refined_live_test\segments_auto.csv`
+- Manual template: `C:\Users\UBESC\Desktop\Combined MMwave and RGB\mmwave_pose_ui_4ec2b00\analysis_outputs\registry_analysis\sitting_relative_gate_refined_live_test\segments_manual_template.csv`
+- Range timeline: `C:\Users\UBESC\Desktop\Combined MMwave and RGB\mmwave_pose_ui_4ec2b00\analysis_outputs\registry_analysis\sitting_relative_gate_refined_live_test\plots\timeline_range_by_track.png`
+- RGB video: `C:\Users\UBESC\Desktop\Combined MMwave and RGB\logs\sitting_relative_gate_refined_live_test\videos\rgb_annotated.mp4`
+
+Before treating posture numbers as final, verify the auto boundaries against the RGB video and range timeline. If boundaries are off, edit `segments_manual_template.csv` and rerun with `--manual-segments`.
+
+## Tracking accuracy results
+| segment_id | expected_pose | expected_distance_m | expected_person_count | frames_total | frames_with_any_target | frames_with_primary_target | tracking_presence_rate | dropout_frames | dropout_rate | longest_dropout_s | mean_range_m | median_range_m | std_range_m | mae_range_m | rmse_range_m | bias_m | p50_abs_error_m | p90_abs_error_m | p95_abs_error_m | std_x_m | std_y_m | std_z_m | range_jitter_p95_m | xy_jitter_m | unique_tids | primary_tid | tid_switch_count | tid_switch_rate_per_min | mean_tid_lifetime_s | fragmentation_count | mean_active_tracks | max_active_tracks | frames_with_extra_tracks | extra_track_rate | ghost_track_count | ghost_frames | ghost_duration_s | ghost_nearest_distance_to_primary_m | presence_component | range_component | ghost_component | id_switch_component | dropout_component | jitter_component | tracking_score |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| standing_1m | STANDING | 1.0 | 1 | 967 | 967 | 967 | 1.0 | 0 | 0.0 | 0.0 | 0.9782577897088794 | 0.9784367538458902 | 0.016886508935566855 | 0.02314756384259574 | 0.027524225819666265 | -0.021742210291120608 | 0.02177162362521845 | 0.04636622769825937 | 0.05210328882176923 | 0.016095130901881395 | 0.01687015822681274 | 0.062260640562336426 | 0.032372288411653544 | 0.01999998676277035 | 1 | 1 | 0 | 0.0 | 53.156 | 0 | 1.0 | 1.0 | 0 | 0.0 | 0 | 0 | NA | NA | 1.0 | 0.9768524361574042 | 1.0 | 1.0 | 1.0 | 0.935255423176693 | 99.09758801981857 |
+| standing_2m | STANDING | 2.0 | 1 | 1095 | 1095 | 1095 | 1.0 | 0 | 0.0 | 0.0 | 1.9236924260787025 | 1.9179197387216733 | 0.02148122345393719 | 0.07643111489024264 | 0.07927084829705935 | -0.07630757392129757 | 0.08208026127832668 | 0.09789764037568305 | 0.10583211296065187 | 0.06042704322790158 | 0.021586587983132236 | 0.08541457421147858 | 0.05609427649771787 | 0.047561224975593334 | 1 | 1 | 0 | 0.0 | 60.172 | 0 | 1.0 | 1.0 | 0 | 0.0 | 0 | 0 | NA | NA | 1.0 | 0.9235688851097573 | 1.0 | 1.0 | 1.0 | 0.8878114470045643 | 97.52827936276675 |
+| standing_3m | STANDING | 3.0 | 1 | 1143 | 1143 | 1143 | 1.0 | 0 | 0.0 | 0.0 | 2.9183679558931876 | 2.9205920062867716 | 0.01945467479126767 | 0.08163204410681212 | 0.08391629081326957 | -0.08163204410681212 | 0.07940799371322838 | 0.1043030969792177 | 0.1108084896961158 | 0.05655310935683349 | 0.019022877443543387 | 0.04190147691228311 | 0.031400495982887425 | 0.04906775052820055 | 1 | 1 | 0 | 0.0 | 62.84299999999999 | 0 | 1.0 | 1.0 | 0 | 0.0 | 0 | 0 | NA | NA | 1.0 | 0.9183679558931879 | 1.0 | 1.0 | 1.0 | 0.9371990080342252 | 97.64519393750082 |
+| standing_4m | STANDING | 4.0 | 1 | 490 | 490 | 490 | 1.0 | 0 | 0.0 | 0.0 | 3.8466526415861746 | 3.847535682747288 | 0.0027087096541434726 | 0.1533473584138242 | 0.15337123089679672 | -0.1533473584138242 | 0.1524643172527118 | 0.1542267129842294 | 0.16146409764309944 | 0.003391937533311116 | 0.0026738171734768793 | 0.005451413576834954 | 0.008999780390387624 | 0.0025590074212584156 | 1 | 1 | 0 | 0.0 | 26.859999999999985 | 0 | 1.0 | 1.0 | 0 | 0.0 | 0 | 0 | NA | NA | 1.0 | 0.8466526415861758 | 1.0 | 1.0 | 1.0 | 0.9820004392192248 | 96.07631823575052 |
+| standing_5m | STANDING | 5.0 | 1 | 1132 | 1132 | 1132 | 1.0 | 0 | 0.0 | 0.0 | 4.99186254168258 | 4.984243964244085 | 0.018304819409337116 | 0.0195058180130972 | 0.020024700906909297 | -0.008137458317420392 | 0.020430583246143996 | 0.024349959455912007 | 0.024349959455912007 | 0.06343445265945336 | 0.019498809373618864 | 0.057555443678910925 | 0.03618661900205922 | 0.05978640842193819 | 1 | 2 | 0 | 0.0 | 62.20300000000003 | 0 | 1.0 | 1.0 | 0 | 0.0 | 0 | 0 | NA | NA | 1.0 | 0.9804941819869027 | 1.0 | 1.0 | 1.0 | 0.9276267619958816 | 99.15048835965197 |
+| leanback_1m | SITTING | 1.0 | 1 | 508 | 508 | 508 | 1.0 | 0 | 0.0 | 0.0 | 1.084369807149893 | 1.0789492841110724 | 0.02423414725712158 | 0.08436980714989298 | 0.08777472393262702 | 0.08436980714989298 | 0.07894928411107238 | 0.12804382742300757 | 0.13088809176297822 | 0.006015161398281932 | 0.024185033887454622 | 0.026270863265655923 | 0.05193880765190584 | 0.020791496479156374 | 1 | 4 | 0 | 0.0 | 27.952999999999975 | 0 | 1.0 | 1.0 | 0 | 0.0 | 0 | 0 | NA | NA | 1.0 | 0.915630192850107 | 1.0 | 1.0 | 1.0 | 0.8961223846961883 | 97.3713667447336 |
+| leanback_2m | SITTING | 2.0 | 1 | 471 | 471 | 471 | 1.0 | 0 | 0.0 | 0.0 | 2.1575702145729947 | 2.1601556601062306 | 0.011257479481689809 | 0.1575702145729947 | 0.15797099194868125 | 0.1575702145729947 | 0.1601556601062306 | 0.1601556601062306 | 0.1601556601062306 | 0.02440238880568034 | 0.01100105579322892 | 0.03107134513248153 | 0.02126563531018877 | 0.011545355608513032 | 1 | 4 | 0 | 0.0 | 25.82800000000003 | 0 | 1.0 | 1.0 | 0 | 0.0 | 0 | 0 | NA | NA | 1.0 | 0.8424297854270053 | 1.0 | 1.0 | 1.0 | 0.9574687293796225 | 95.84808828257324 |
+| leanback_3m | SITTING | 3.0 | 1 | 518 | 518 | 518 | 1.0 | 0 | 0.0 | 0.0 | 2.977715177520881 | 2.959434790241582 | 0.04646034861333733 | 0.04789129559056366 | 0.05148796164388842 | -0.022284822479118255 | 0.04056520975841815 | 0.09116657150894314 | 0.0968714547458207 | 0.03174777316452396 | 0.04693590865544698 | 0.07323254975030886 | 0.13743666450423886 | 0.03956326961580806 | 1 | 6 | 0 | 0.0 | 28.40599999999995 | 0 | 1.0 | 1.0 | 0 | 0.0 | 0 | 0 | NA | NA | 1.0 | 0.9521087044094363 | 1.0 | 1.0 | 1.0 | 0.7251266709915223 | 97.42835096519352 |
+| leanback_4m | SITTING | 4.0 | 1 | 670 | 670 | 670 | 1.0 | 0 | 0.0 | 0.0 | 4.07432850010653 | 4.0662497133436055 | 0.017810578490510785 | 0.07432850010652879 | 0.07642950462015632 | 0.07432850010652879 | 0.06624971334360552 | 0.10556986667396284 | 0.12528547143591773 | 0.014671749464215875 | 0.017158439725719676 | 0.04118617672394184 | 0.05903575809231221 | 0.016381640643896776 | 1 | 8 | 0 | 0.0 | 36.764999999999986 | 0 | 1.0 | 1.0 | 0 | 0.0 | 0 | 0 | NA | NA | 1.0 | 0.9256714998934712 | 1.0 | 1.0 | 1.0 | 0.8819284838153756 | 97.55142991641365 |
+| leanback_5m | SITTING | 5.0 | 1 | 622 | 622 | 622 | 1.0 | 0 | 0.0 | 0.0 | 4.694389446652838 | 4.696029988141103 | 0.002412357695409081 | 0.30561055334716225 | 0.305620058946969 | -0.30561055334716225 | 0.3039700118588966 | 0.3091509392646312 | 0.3091509392646312 | 0.006848450377851098 | 0.0023632035483283406 | 0.006345005561281944 | 0.005180927405734614 | 0.006734722298080828 | 1 | 9 | 0 | 0.0 | 34.125 | 0 | 1.0 | 1.0 | 0 | 0.0 | 0 | 0 | NA | NA | 1.0 | 0.6943894466528377 | 1.0 | 1.0 | 1.0 | 0.9896381451885308 | 92.3079268922636 |
+| upright_1m | SITTING | 1.0 | 1 | 1197 | 1197 | 1197 | 1.0 | 0 | 0.0 | 0.0 | 0.9450988538378712 | 0.9503705929027874 | 0.0269607055092806 | 0.05602169940888294 | 0.061158877036053085 | -0.05490114616212895 | 0.04962940709721264 | 0.08853847466633546 | 0.08853847466633546 | 0.021493951702046918 | 0.026723499570901255 | 0.0774590640062645 | 0.04307155275631716 | 0.030588646959077936 | 1 | 10 | 0 | 0.0 | 65.75 | 0 | 1.0 | 1.0 | 0 | 0.0 | 0 | 0 | NA | NA | 1.0 | 0.9439783005911171 | 1.0 | 1.0 | 1.0 | 0.9138568944873657 | 98.16874198721476 |
+| upright_2m | SITTING | 2.0 | 1 | 1171 | 1171 | 1171 | 1.0 | 0 | 0.0 | 0.0 | 1.9327396036607214 | 1.9307430673451598 | 0.011518777795926013 | 0.0672603963392785 | 0.06823877087731421 | -0.0672603963392785 | 0.06925693265484023 | 0.07421906694630676 | 0.07553873785379317 | 0.0319591900657747 | 0.011353194673654303 | 0.049757621475889906 | 0.03143185053821518 | 0.02941186074118551 | 1 | 10 | 0 | 0.0 | 64.32799999999997 | 0 | 1.0 | 1.0 | 0 | 0.0 | 0 | 0 | NA | NA | 1.0 | 0.9327396036607215 | 1.0 | 1.0 | 1.0 | 0.9371362989235696 | 98.0041715861359 |
+| upright_3m | SITTING | 3.0 | 1 | 1166 | 1166 | 1166 | 1.0 | 0 | 0.0 | 0.0 | 2.8932014898228595 | 2.9003485142697794 | 0.024788110943908245 | 0.10679851017714041 | 0.10963505482867962 | -0.10679851017714041 | 0.09965148573022065 | 0.1433851413325109 | 0.1433851413325109 | 0.016312876937537007 | 0.024734963116564694 | 0.054417654120078505 | 0.0457435561638081 | 0.02404828476848187 | 1 | 10 | 0 | 0.0 | 64.07900000000006 | 0 | 1.0 | 1.0 | 0 | 0.0 | 0 | 0 | NA | NA | 1.0 | 0.8932014898228596 | 1.0 | 1.0 | 1.0 | 0.9085128876723838 | 96.87260168393341 |
+| upright_4m | SITTING | 4.0 | 1 | 475 | 475 | 475 | 1.0 | 0 | 0.0 | 0.0 | 3.8672286869367887 | 3.8649600428772715 | 0.011020642963899159 | 0.1327713130632115 | 0.13322695091471792 | -0.1327713130632115 | 0.13503995712272854 | 0.13503995712272854 | 0.13558136234904827 | 0.0018587328648405764 | 0.011099216040055242 | 0.023867495600147615 | 0.002491720132554054 | 0.004592121473822445 | 1 | 10 | 0 | 0.0 | 26.047000000000025 | 0 | 1.0 | 1.0 | 0 | 0.0 | 0 | 0 | NA | NA | 1.0 | 0.8672286869367885 | 1.0 | 1.0 | 1.0 | 0.9950165597348919 | 96.65579997209417 |
+| upright_5m | SITTING | 5.0 | 1 | 908 | 906 | 906 | 0.9977973568281938 | 2 | 0.0022026431718061845 | 0.047000000000025466 | 0.777196298116447 | 0.7249829044998918 | 0.30229292446810296 | 4.222803701883554 | 4.233597908963552 | -4.222803701883554 | 4.275017095500108 | 4.377334676921936 | 4.377437720425513 | 0.03868653928502825 | 0.3022092959223304 | 0.1448831931029736 | 0.3951082924239234 | 0.15034823502808844 | 1 | 11 | 0 | 0.0 | 49.812000000000126 | 0 | 1.0 | 1.0 | 0 | 0.0 | 0 | 0 | NA | NA | 0.9977973568281938 | 0.0 | 1.0 | 1.0 | 0.9977973568281938 | 0.20978341515215315 | 70.94979813302949 |
+| leanforward_1m | SITTING | 1.0 | 1 | 474 | 474 | 474 | 1.0 | 0 | 0.0 | 0.0 | 0.6146231748167457 | 0.6172235202904185 | 0.035245555734711734 | 0.3853768251832544 | 0.386981815862803 | -0.3853768251832544 | 0.3827764797095815 | 0.40049766029990186 | 0.40049766029990186 | 0.012739557937889223 | 0.03523136814906765 | 0.09292882869719757 | 0.01772118059032035 | 0.015324323944722506 | 1 | 11 | 0 | 0.0 | 26.061999999999898 | 0 | 1.0 | 1.0 | 0 | 0.0 | 0 | 0 | NA | NA | 1.0 | 0.6146231748167457 | 1.0 | 1.0 | 1.0 | 0.9645576388193593 | 90.18836756451545 |
+| leanforward_2m | SITTING | 2.0 | 1 | 701 | 701 | 701 | 1.0 | 0 | 0.0 | 0.0 | 1.5843197508160958 | 1.5687346213715023 | 0.04660218717880509 | 0.4156802491839042 | 0.4182806896301861 | -0.4156802491839042 | 0.4312653786284977 | 0.4312653786284977 | 0.4312653786284977 | 0.010785452307181698 | 0.04668765937621283 | 0.05927354651781241 | 0.06040453423751302 | 0.022578640097143114 | 1 | 11 | 0 | 0.0 | 38.5 | 0 | 1.0 | 1.0 | 0 | 0.0 | 0 | 0 | NA | NA | 1.0 | 0.5843197508160958 | 1.0 | 1.0 | 1.0 | 0.879190931524974 | 89.00394842802727 |
+| leanforward_3m | SITTING | 3.0 | 1 | 840 | 840 | 840 | 1.0 | 0 | 0.0 | 0.0 | 2.536410303629695 | 2.517007003101198 | 0.03191868378651574 | 0.4635896963703055 | 0.4646859112297313 | -0.4635896963703055 | 0.48299299689880204 | 0.48299299689880204 | 0.48299299689880204 | 0.02150655650281478 | 0.03101345033182409 | 0.03224759890378628 | 0.07851456159553427 | 0.025715457623075057 | 1 | 12 | 0 | 0.0 | 46.125 | 0 | 1.0 | 1.0 | 0 | 0.0 | 0 | 0 | NA | NA | 1.0 | 0.5364103036296946 | 1.0 | 1.0 | 1.0 | 0.8429708768089315 | 87.62511197478702 |
+| leanforward_4m | SITTING | 4.0 | 1 | 521 | 519 | 519 | 0.9961612284069098 | 2 | 0.0038387715930902067 | 0.07799999999997453 | 3.5206349914191426 | 3.517166385257593 | 0.026237434091069357 | 0.47936500858085856 | 0.4800811264742793 | -0.47936500858085856 | 0.48283361474240705 | 0.48283361474240705 | 0.48283361474240705 | 0.01074985962268064 | 0.02602758224142758 | 0.011879648566713932 | 0.0 | 0.007818552050486897 | 1 | 13 | 0 | 0.0 | 28.483999999999924 | 0 | 1.0 | 1.0 | 0 | 0.0 | 0 | 0 | NA | NA | 0.9961612284069098 | 0.5206349914191415 | 1.0 | 1.0 | 0.9961612284069098 | 1.0 | 87.84313006378949 |
+| leanforward_5m | SITTING | 5.0 | 1 | 436 | 436 | 436 | 1.0 | 0 | 0.0 | 0.0 | 4.606923703827821 | 4.605112438197289 | 0.01182762136770333 | 0.39307629617217876 | 0.3932537938596481 | -0.39307629617217876 | 0.3948875618027108 | 0.3948875618027108 | 0.3948875618027108 | 0.005249505424645279 | 0.01187000011280476 | 0.004326204335541617 | 0.0 | 0.0036892254393990757 | 1 | 14 | 0 | 0.0 | 23.8900000000001 | 0 | 1.0 | 1.0 | 0 | 0.0 | 0 | 0 | NA | NA | 1.0 | 0.6069237038278212 | 1.0 | 1.0 | 1.0 | 1.0 | 90.17309259569552 |
+
+## Tracking verdict by segment
+| segment_id | expected_pose | expected_distance_m | tracking_presence_rate | range_mae_m | dropout_rate | extra_track_rate | tid_switch_count | tracking_score | tracking_verdict | tracking_issue_reason |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| standing_1m | STANDING | 1.0 | 1.0 | 0.02314756384259574 | 0.0 | 0.0 | 0 | 99.09758801981857 | GOOD | Presence is high with no meaningful dropout, ID-switch, or extra-track issue. |
+| standing_2m | STANDING | 2.0 | 1.0 | 0.07643111489024264 | 0.0 | 0.0 | 0 | 97.52827936276675 | GOOD | Presence is high with no meaningful dropout, ID-switch, or extra-track issue. |
+| standing_3m | STANDING | 3.0 | 1.0 | 0.08163204410681212 | 0.0 | 0.0 | 0 | 97.64519393750082 | GOOD | Presence is high with no meaningful dropout, ID-switch, or extra-track issue. |
+| standing_4m | STANDING | 4.0 | 1.0 | 0.1533473584138242 | 0.0 | 0.0 | 0 | 96.07631823575052 | MINOR_RANGE_BIAS | Tracking is continuous, but range MAE is a minor calibration/bias issue. |
+| standing_5m | STANDING | 5.0 | 1.0 | 0.0195058180130972 | 0.0 | 0.0 | 0 | 99.15048835965197 | GOOD | Presence is high with no meaningful dropout, ID-switch, or extra-track issue. |
+| leanback_1m | SITTING | 1.0 | 1.0 | 0.08436980714989298 | 0.0 | 0.0 | 0 | 97.3713667447336 | GOOD | Presence is high with no meaningful dropout, ID-switch, or extra-track issue. |
+| leanback_2m | SITTING | 2.0 | 1.0 | 0.1575702145729947 | 0.0 | 0.0 | 0 | 95.84808828257324 | MINOR_RANGE_BIAS | Tracking is continuous, but range MAE is a minor calibration/bias issue. |
+| leanback_3m | SITTING | 3.0 | 1.0 | 0.04789129559056366 | 0.0 | 0.0 | 0 | 97.42835096519352 | GOOD | Presence is high with no meaningful dropout, ID-switch, or extra-track issue. |
+| leanback_4m | SITTING | 4.0 | 1.0 | 0.07432850010652879 | 0.0 | 0.0 | 0 | 97.55142991641365 | GOOD | Presence is high with no meaningful dropout, ID-switch, or extra-track issue. |
+| leanback_5m | SITTING | 5.0 | 1.0 | 0.30561055334716225 | 0.0 | 0.0 | 0 | 92.3079268922636 | FAILED | Range error or tracking score crosses the tracking failure threshold. |
+| upright_1m | SITTING | 1.0 | 1.0 | 0.05602169940888294 | 0.0 | 0.0 | 0 | 98.16874198721476 | GOOD | Presence is high with no meaningful dropout, ID-switch, or extra-track issue. |
+| upright_2m | SITTING | 2.0 | 1.0 | 0.0672603963392785 | 0.0 | 0.0 | 0 | 98.0041715861359 | GOOD | Presence is high with no meaningful dropout, ID-switch, or extra-track issue. |
+| upright_3m | SITTING | 3.0 | 1.0 | 0.10679851017714041 | 0.0 | 0.0 | 0 | 96.87260168393341 | GOOD | Presence is high with no meaningful dropout, ID-switch, or extra-track issue. |
+| upright_4m | SITTING | 4.0 | 1.0 | 0.1327713130632115 | 0.0 | 0.0 | 0 | 96.65579997209417 | GOOD | Presence is high with no meaningful dropout, ID-switch, or extra-track issue. |
+| upright_5m | SITTING | 5.0 | 0.9977973568281938 | 4.222803701883554 | 0.0022026431718061845 | 0.0 | 0 | 70.94979813302949 | FAILED | Range error or tracking score crosses the tracking failure threshold. |
+| leanforward_1m | SITTING | 1.0 | 1.0 | 0.3853768251832544 | 0.0 | 0.0 | 0 | 90.18836756451545 | FAILED | Range error or tracking score crosses the tracking failure threshold. |
+| leanforward_2m | SITTING | 2.0 | 1.0 | 0.4156802491839042 | 0.0 | 0.0 | 0 | 89.00394842802727 | FAILED | Range error or tracking score crosses the tracking failure threshold. |
+| leanforward_3m | SITTING | 3.0 | 1.0 | 0.4635896963703055 | 0.0 | 0.0 | 0 | 87.62511197478702 | FAILED | Range error or tracking score crosses the tracking failure threshold. |
+| leanforward_4m | SITTING | 4.0 | 0.9961612284069098 | 0.47936500858085856 | 0.0038387715930902067 | 0.0 | 0 | 87.84313006378949 | FAILED | Range error or tracking score crosses the tracking failure threshold. |
+| leanforward_5m | SITTING | 5.0 | 1.0 | 0.39307629617217876 | 0.0 | 0.0 | 0 | 90.17309259569552 | FAILED | Range error or tracking score crosses the tracking failure threshold. |
+
+## Posture accuracy results
+| segment_id | expected_pose | expected_distance_m | frames_total | frames_with_pose_prediction | dominant_display_pose | correct_frames | accuracy | unknown_rate | moving_rate | falling_false_rate | lying_false_rate | standing_rate | sitting_rate | mean_stand_prob | mean_sit_prob | median_stand_prob | median_sit_prob | mean_confidence_if_available | time_to_first_correct_s | time_to_stable_correct_s | longest_correct_run_s | longest_wrong_run_s | pose_switch_count | pose_switch_rate_per_min | dominant_wrong_pose |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| standing_1m | STANDING | 1.0 | 967 | 967 | STANDING | 945 | 0.9772492244053774 | 0.0 | 0.010341261633919338 | 0.0 | 0.0 | 0.9772492244053774 | 0.012409513960703205 | 0.47944284077144333 | 0.4681971644310448 | 0.5086293816566467 | 0.4371512234210968 | 0.6365138801140278 | 1.2289999999999992 | 1.2289999999999992 | 51.937 | 1.1870000000000012 | 2 | 2.2564449709482712 | SITTING |
+| standing_2m | STANDING | 2.0 | 1095 | 1095 | STANDING | 1076 | 0.982648401826484 | 0.0 | 0.0 | 0.0 | 0.0 | 0.982648401826484 | 0.017351598173515982 | 0.5813192324006938 | 0.35727898549271503 | 0.6274259090423584 | 0.3047413229942322 | 0.6299066212895799 | 1.1230000000000047 | 1.1230000000000047 | 59.124999999999986 | 0.9840000000000089 | 1 | 0.995652318210481 | SITTING |
+| standing_3m | STANDING | 3.0 | 1143 | 1143 | STANDING | 942 | 0.8241469816272966 | 0.0 | 0.0 | 0.0 | 0.0 | 0.8241469816272966 | 0.17585301837270342 | 0.5507314986584354 | 0.3819938532010777 | 0.6353718638420105 | 0.2961231768131256 | 0.6457339831589609 | 6.025000000000006 | 12.900000000000006 | 39.640000000000015 | 5.936999999999983 | 5 | 4.769930359016758 | SITTING |
+| standing_4m | STANDING | 4.0 | 490 | 490 | STANDING | 490 | 1.0 | 0.0 | 0.0 | 0.0 | 0.0 | 1.0 | 0.0 | 0.7735629848679718 | 0.17112628650300357 | 0.7841855883598328 | 0.1644412875175476 | 0.7736101517263724 | 0.0660000000000025 | 0.0660000000000025 | 26.859999999999985 | 0.0 | 0 | 0.0 | NA |
+| standing_5m | STANDING | 5.0 | 1132 | 1132 | STANDING | 1132 | 1.0 | 0.0 | 0.0 | 0.0 | 0.0 | 1.0 | 0.0 | 0.8743536353585155 | 0.08479366414314757 | 0.8764677047729492 | 0.0866134986281395 | 0.8743536353585155 | 0.012000000000000455 | 0.012000000000000455 | 62.20300000000003 | 0.0 | 0 | 0.0 | NA |
+| leanback_1m | SITTING | 1.0 | 508 | 508 | SITTING | 508 | 1.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 1.0 | 0.2561028234689958 | 0.606551075310219 | 0.27582187950611115 | 0.5696216821670532 | 0.606551075310219 | 0.06700000000000728 | 0.06700000000000728 | 27.952999999999975 | 0.0 | 0 | 0.0 | NA |
+| leanback_2m | SITTING | 2.0 | 471 | 471 | SITTING | 470 | 0.9978768577494692 | 0.0 | 0.0021231422505307855 | 0.0 | 0.0 | 0.0 | 0.9978768577494692 | 0.45884470848886655 | 0.45497546175736026 | 0.4932830333709717 | 0.4195601940155029 | 0.5218608157270274 | 0.1220000000000141 | 0.1220000000000141 | 25.781000000000006 | 0.047000000000025466 | 1 | 2.314100586238815 | MOVING |
+| leanback_3m | SITTING | 3.0 | 518 | 518 | SITTING | 446 | 0.861003861003861 | 0.0 | 0.0 | 0.0 | 0.0 | 0.138996138996139 | 0.861003861003861 | 0.3740652276339678 | 0.5296546704635657 | 0.3718559443950653 | 0.5274404883384705 | 0.5456165157574945 | 0.03899999999998727 | 5.194999999999936 | 23.25 | 3.905999999999949 | 2 | 4.21629598397809 | STANDING |
+| leanback_4m | SITTING | 4.0 | 670 | 670 | STANDING | 0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 1.0 | 0.0 | 0.6874539955338436 | 0.2519094475836896 | 0.6815018057823181 | 0.2570066154003143 | 0.6874539955338436 | NA | NA | 0.0 | 36.764999999999986 | 0 | 0.0 | STANDING |
+| leanback_5m | SITTING | 5.0 | 622 | 622 | STANDING | 0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 1.0 | 0.0 | 0.6293753093270243 | 0.302259299676518 | 0.624972403049469 | 0.3069446980953216 | 0.6293753093270243 | NA | NA | 0.0 | 34.125 | 0 | 0.0 | STANDING |
+| upright_1m | SITTING | 1.0 | 1197 | 1197 | STANDING | 120 | 0.10025062656641603 | 0.0 | 0.004177109440267335 | 0.0 | 0.0 | 0.8955722639933166 | 0.10025062656641603 | 0.3625294224494475 | 0.5752046577066009 | 0.4525982439517975 | 0.4750764369964599 | 0.6566146643538224 | 0.2900000000000773 | 0.2900000000000773 | 6.530999999999949 | 58.90599999999995 | 2 | 1.8240408585152303 | STANDING |
+| upright_2m | SITTING | 2.0 | 1171 | 1171 | SITTING | 1171 | 1.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 1.0 | 0.4043807970140412 | 0.5095872820492588 | 0.4620173573493957 | 0.4491810500621795 | 0.5285478392083048 | 0.03300000000001546 | 0.03300000000001546 | 64.32799999999997 | 0.0 | 0 | 0.0 | NA |
+| upright_3m | SITTING | 3.0 | 1166 | 1166 | STANDING | 196 | 0.1680960548885077 | 0.0 | 0.0 | 0.0 | 0.0 | 0.8319039451114922 | 0.1680960548885077 | 0.5127905314743493 | 0.41394168457997194 | 0.5778353810310364 | 0.3447027802467346 | 0.5929132762331496 | 0.007999999999924512 | 23.289999999999964 | 5.359000000000037 | 35.375 | 7 | 6.553488952690055 | STANDING |
+| upright_4m | SITTING | 4.0 | 475 | 475 | STANDING | 0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 1.0 | 0.0 | 0.5778468134685567 | 0.3506283526044143 | 0.5885445475578308 | 0.3415756523609161 | 0.5887769204691836 | NA | NA | 0.0 | 26.047000000000025 | 0 | 0.0 | STANDING |
+| upright_5m | SITTING | 5.0 | 908 | 906 | SITTING | 435 | 0.48013245033112584 | 0.01434878587196468 | 0.08278145695364239 | 0.0 | 0.0 | 0.4227373068432671 | 0.48013245033112584 | 0.3112190995809584 | 0.570985916566112 | 0.384884238243103 | 0.5122591257095337 | 0.5903407970801094 | 0.5230000000001382 | 28.27300000000014 | 21.702999999999975 | 21.29600000000005 | 14 | 16.8 | STANDING |
+| leanforward_1m | SITTING | 1.0 | 474 | 474 | SITTING | 464 | 0.9789029535864979 | 0.0 | 0.02109704641350211 | 0.0 | 0.0 | 0.0 | 0.9789029535864979 | 0.353716455763481 | 0.5505087623364815 | 0.3816918879747391 | 0.5232395827770233 | 0.5505087623364815 | 0.06700000000000728 | 0.06700000000000728 | 24.968999999999824 | 0.3129999999998745 | 3 | 6.877053564606103 | MOVING |
+| leanforward_2m | SITTING | 2.0 | 701 | 701 | STANDING | 295 | 0.42082738944365194 | 0.0 | 0.0 | 0.0 | 0.0 | 0.579172610556348 | 0.42082738944365194 | 0.43414773596729683 | 0.482405633712121 | 0.5000103116035461 | 0.418610543012619 | 0.531118073579078 | 0.03499999999985448 | 0.03499999999985448 | 16.172000000000025 | 22.296999999999798 | 1 | 1.5557341768869755 | STANDING |
+| leanforward_3m | SITTING | 3.0 | 840 | 840 | STANDING | 30 | 0.03571428571428571 | 0.0 | 0.0 | 0.0 | 0.0 | 0.9642857142857143 | 0.03571428571428571 | 0.5457149662423901 | 0.3802917381482465 | 0.5729219317436218 | 0.3541695773601532 | 0.5840102141456944 | 0.009999999999990905 | NA | 1.6089999999999236 | 44.452999999999975 | 1 | 1.299094963841859 | STANDING |
+| leanforward_4m | SITTING | 4.0 | 521 | 519 | SITTING | 501 | 0.9653179190751445 | 0.01348747591522158 | 0.02119460500963391 | 0.0 | 0.0 | 0.0 | 0.9653179190751445 | 0.45012592212054764 | 0.44956500819652756 | 0.4694965481758117 | 0.4480039477348327 | 0.46964355258123947 | 0.5460000000000491 | 1.3430000000000746 | 27.311999999999898 | 1.0939999999998236 | 3 | 6.27024767478318 | MOVING |
+| leanforward_5m | SITTING | 5.0 | 436 | 436 | STANDING | 0 | 0.0 | 0.0 | 0.07110091743119266 | 0.0 | 0.0 | 0.9288990825688074 | 0.0 | 0.6616438014791646 | 0.27072017113549995 | 0.6793028712272644 | 0.2576984465122223 | 0.6725070756783179 | NA | NA | 0.0 | 23.8900000000001 | 1 | 2.504800868330973 | STANDING |
+
+## Posture verdict by segment
+| segment_id | expected_pose | expected_distance_m | accuracy | dominant_display_pose | dominant_wrong_pose | standing_rate | sitting_rate | moving_rate | unknown_rate | quality_NO_POINTS_rate | mean_geom_pts | mean_stand_prob | mean_sit_prob | time_to_stable_correct_s | posture_verdict | posture_issue_reason |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| standing_1m | STANDING | 1.0 | 0.9772492244053774 | STANDING | SITTING | 0.9772492244053774 | 0.012409513960703205 | 0.010341261633919338 | 0.0 | 0.22543950361944157 | 3.157187176835574 | 0.47944284077144333 | 0.4681971644310448 | 1.2289999999999992 | GOOD | Accuracy is 0.977. |
+| standing_2m | STANDING | 2.0 | 0.982648401826484 | STANDING | SITTING | 0.982648401826484 | 0.017351598173515982 | 0.0 | 0.0 | 0.6566210045662101 | 0.8146118721461187 | 0.5813192324006938 | 0.35727898549271503 | 1.1230000000000047 | GOOD | Accuracy is 0.983. |
+| standing_3m | STANDING | 3.0 | 0.8241469816272966 | STANDING | SITTING | 0.8241469816272966 | 0.17585301837270342 | 0.0 | 0.0 | 0.7349081364829396 | 1.0376202974628173 | 0.5507314986584354 | 0.3819938532010777 | 12.900000000000006 | STAND_AS_SIT | Expected STANDING has a nontrivial SITTING false-positive rate. |
+| standing_4m | STANDING | 4.0 | 1.0 | STANDING | NA | 1.0 | 0.0 | 0.0 | 0.0 | 0.9734693877551021 | 0.04285714285714286 | 0.7735629848679718 | 0.17112628650300357 | 0.0660000000000025 | GOOD | Accuracy is 1.000. |
+| standing_5m | STANDING | 5.0 | 1.0 | STANDING | NA | 1.0 | 0.0 | 0.0 | 0.0 | 0.9240282685512368 | 0.1501766784452297 | 0.8743536353585155 | 0.08479366414314757 | 0.012000000000000455 | GOOD | Accuracy is 1.000. |
+| leanback_1m | SITTING | 1.0 | 1.0 | SITTING | NA | 0.0 | 1.0 | 0.0 | 0.0 | 0.889763779527559 | 0.20669291338582677 | 0.2561028234689958 | 0.606551075310219 | 0.06700000000000728 | GOOD | Accuracy is 1.000. |
+| leanback_2m | SITTING | 2.0 | 0.9978768577494692 | SITTING | MOVING | 0.0 | 0.9978768577494692 | 0.0021231422505307855 | 0.0 | 0.9469214437367304 | 0.18471337579617833 | 0.45884470848886655 | 0.45497546175736026 | 0.1220000000000141 | GOOD | Accuracy is 0.998. |
+| leanback_3m | SITTING | 3.0 | 0.861003861003861 | SITTING | STANDING | 0.138996138996139 | 0.861003861003861 | 0.0 | 0.0 | 0.9343629343629344 | 0.13706563706563707 | 0.3740652276339678 | 0.5296546704635657 | 5.194999999999936 | WEAK | Accuracy is below the strong-pass threshold but not a full failure. |
+| leanback_4m | SITTING | 4.0 | 0.0 | STANDING | STANDING | 1.0 | 0.0 | 0.0 | 0.0 | 0.9865671641791045 | 0.03582089552238806 | 0.6874539955338436 | 0.2519094475836896 | NA | SIT_AS_STAND | Expected SITTING is displayed as STANDING more often than SITTING. |
+| leanback_5m | SITTING | 5.0 | 0.0 | STANDING | STANDING | 1.0 | 0.0 | 0.0 | 0.0 | 0.9983922829581994 | 0.003215434083601286 | 0.6293753093270243 | 0.302259299676518 | NA | SIT_AS_STAND | Expected SITTING is displayed as STANDING more often than SITTING. |
+| upright_1m | SITTING | 1.0 | 0.10025062656641603 | STANDING | STANDING | 0.8955722639933166 | 0.10025062656641603 | 0.004177109440267335 | 0.0 | 0.6382623224728488 | 1.3032581453634084 | 0.3625294224494475 | 0.5752046577066009 | 0.2900000000000773 | SIT_AS_STAND | Expected SITTING is displayed as STANDING more often than SITTING. |
+| upright_2m | SITTING | 2.0 | 1.0 | SITTING | NA | 0.0 | 1.0 | 0.0 | 0.0 | 0.9128949615713066 | 0.2228864218616567 | 0.4043807970140412 | 0.5095872820492588 | 0.03300000000001546 | GOOD | Accuracy is 1.000. |
+| upright_3m | SITTING | 3.0 | 0.1680960548885077 | STANDING | STANDING | 0.8319039451114922 | 0.1680960548885077 | 0.0 | 0.0 | 0.8473413379073756 | 0.3979416809605489 | 0.5127905314743493 | 0.41394168457997194 | 23.289999999999964 | SIT_AS_STAND | Expected SITTING is displayed as STANDING more often than SITTING. |
+| upright_4m | SITTING | 4.0 | 0.0 | STANDING | STANDING | 1.0 | 0.0 | 0.0 | 0.0 | 0.968421052631579 | 0.11157894736842106 | 0.5778468134685567 | 0.3506283526044143 | NA | SIT_AS_STAND | Expected SITTING is displayed as STANDING more often than SITTING. |
+| upright_5m | SITTING | 5.0 | 0.48013245033112584 | SITTING | STANDING | 0.4227373068432671 | 0.48013245033112584 | 0.08278145695364239 | 0.01434878587196468 | 0.6986754966887417 | 2.2660044150110377 | 0.3112190995809584 | 0.570985916566112 | 28.27300000000014 | FAILED | Accuracy is below the 70% failure threshold. |
+| leanforward_1m | SITTING | 1.0 | 0.9789029535864979 | SITTING | MOVING | 0.0 | 0.9789029535864979 | 0.02109704641350211 | 0.0 | 0.8227848101265823 | 0.8649789029535865 | 0.353716455763481 | 0.5505087623364815 | 0.06700000000000728 | GOOD | Accuracy is 0.979. |
+| leanforward_2m | SITTING | 2.0 | 0.42082738944365194 | STANDING | STANDING | 0.579172610556348 | 0.42082738944365194 | 0.0 | 0.0 | 0.9101283880171184 | 0.47075606276747506 | 0.43414773596729683 | 0.482405633712121 | 0.03499999999985448 | SIT_AS_STAND | Expected SITTING is displayed as STANDING more often than SITTING. |
+| leanforward_3m | SITTING | 3.0 | 0.03571428571428571 | STANDING | STANDING | 0.9642857142857143 | 0.03571428571428571 | 0.0 | 0.0 | 0.95 | 0.16666666666666666 | 0.5457149662423901 | 0.3802917381482465 | NA | SIT_AS_STAND | Expected SITTING is displayed as STANDING more often than SITTING. |
+| leanforward_4m | SITTING | 4.0 | 0.9653179190751445 | SITTING | MOVING | 0.0 | 0.9653179190751445 | 0.02119460500963391 | 0.01348747591522158 | 0.9710982658959537 | 0.10982658959537572 | 0.45012592212054764 | 0.44956500819652756 | 1.3430000000000746 | GOOD | Accuracy is 0.965. |
+| leanforward_5m | SITTING | 5.0 | 0.0 | STANDING | STANDING | 0.9288990825688074 | 0.0 | 0.07110091743119266 | 0.0 | 0.9793577981651376 | 0.06422018348623854 | 0.6616438014791646 | 0.27072017113549995 | NA | SIT_AS_STAND | Expected SITTING is displayed as STANDING more often than SITTING. |
+
+## Sitting-vs-standing probability analysis
+This table answers whether the model probabilities themselves favor STANDING during sitting, or whether later smoothing/gates select STANDING despite ambiguous probabilities.
+
+| segment_id | expected_pose | expected_distance_m | mean_stand_prob | median_stand_prob | p10_stand_prob | p90_stand_prob | mean_sit_prob | median_sit_prob | p10_sit_prob | p90_sit_prob | mean_margin_stand_minus_sit | median_margin_stand_minus_sit | frames_stand_prob_gt_sit_prob | frames_sit_prob_gt_stand_prob |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| standing_1m | STANDING | 1.0 | 0.47944284077144333 | 0.5086293816566467 | 0.20271278917789454 | 0.7261665105819702 | 0.4681971644310448 | 0.4371512234210968 | 0.2202921539545059 | 0.7474101305007934 | 0.011245676340398521 | 0.06868210434913635 | 536 | 431 |
+| standing_2m | STANDING | 2.0 | 0.5813192324006938 | 0.6274259090423584 | 0.3714580476284027 | 0.7251464009284974 | 0.35727898549271503 | 0.3047413229942322 | 0.2176549464464187 | 0.5671071290969849 | 0.22404024690797883 | 0.3261218369007111 | 866 | 229 |
+| standing_3m | STANDING | 3.0 | 0.5507314986584354 | 0.6353718638420105 | 0.23885667026042934 | 0.6843892931938171 | 0.3819938532010777 | 0.2961231768131256 | 0.2532796561717987 | 0.7105458021163937 | 0.16873764545735775 | 0.34066629409790045 | 879 | 264 |
+| standing_4m | STANDING | 4.0 | 0.7735629848679718 | 0.7841855883598328 | 0.7815195262432099 | 0.7841855883598328 | 0.17112628650300357 | 0.1644412875175476 | 0.1644412875175476 | 0.1679786890745163 | 0.6024366983649682 | 0.6197443008422852 | 489 | 1 |
+| standing_5m | STANDING | 5.0 | 0.8743536353585155 | 0.8764677047729492 | 0.8661128878593445 | 0.9083999991416932 | 0.08479366414314757 | 0.0866134986281395 | 0.0610488653182983 | 0.0976915508508682 | 0.7895599712153679 | 0.7898542061448097 | 1132 | 0 |
+| leanback_1m | SITTING | 1.0 | 0.2561028234689958 | 0.27582187950611115 | 0.1640772446990013 | 0.3096357226371765 | 0.606551075310219 | 0.5696216821670532 | 0.5566711544990539 | 0.7126818120479583 | -0.35044825184122314 | -0.29363608360290533 | 0 | 508 |
+| leanback_2m | SITTING | 2.0 | 0.45884470848886655 | 0.4932830333709717 | 0.4932830333709717 | 0.4932830333709717 | 0.45497546175736026 | 0.4195601940155029 | 0.4195601940155029 | 0.4195601940155029 | 0.0038692467315063392 | 0.0737228393554688 | 427 | 44 |
+| leanback_3m | SITTING | 3.0 | 0.3740652276339678 | 0.3718559443950653 | 0.3456459283828735 | 0.3718559443950653 | 0.5296546704635657 | 0.5274404883384705 | 0.5274404883384705 | 0.5621643602848054 | -0.15558944282959786 | -0.15558454394340515 | 45 | 473 |
+| leanback_4m | SITTING | 4.0 | 0.6874539955338436 | 0.6815018057823181 | 0.6815018057823181 | 0.6903829634189605 | 0.2519094475836896 | 0.2570066154003143 | 0.2538831532001495 | 0.2570066154003143 | 0.4355445479501539 | 0.42449519038200384 | 670 | 0 |
+| leanback_5m | SITTING | 5.0 | 0.6293753093270243 | 0.624972403049469 | 0.624972403049469 | 0.6366176009178162 | 0.302259299676518 | 0.3069446980953216 | 0.2942982017993927 | 0.3069446980953216 | 0.3271160096505064 | 0.3180277049541474 | 622 | 0 |
+| upright_1m | SITTING | 1.0 | 0.3625294224494475 | 0.4525982439517975 | 0.0436260066926479 | 0.5862127542495728 | 0.5752046577066009 | 0.4750764369964599 | 0.3424025774002075 | 0.9273598194122316 | -0.21267523525715334 | -0.023768663406372126 | 584 | 613 |
+| upright_2m | SITTING | 2.0 | 0.4043807970140412 | 0.4620173573493957 | 0.2669388055801391 | 0.4933669567108154 | 0.5095872820492588 | 0.4491810500621795 | 0.4263039529323578 | 0.6477090120315552 | -0.10520648503521764 | 0.012836307287216187 | 603 | 568 |
+| upright_3m | SITTING | 3.0 | 0.5127905314743493 | 0.5778353810310364 | 0.3126008063554763 | 0.6238370537757874 | 0.41394168457997194 | 0.3447027802467346 | 0.3079810440540313 | 0.6114267706871033 | 0.0988488468943774 | 0.23313260078430176 | 890 | 276 |
+| upright_4m | SITTING | 4.0 | 0.5778468134685567 | 0.5885445475578308 | 0.5885445475578308 | 0.5885445475578308 | 0.3506283526044143 | 0.3415756523609161 | 0.3415756523609161 | 0.3415756523609161 | 0.22721846086414238 | 0.24696889519691473 | 459 | 16 |
+| upright_5m | SITTING | 5.0 | 0.3112190995809584 | 0.384884238243103 | 0.02504782192409035 | 0.4981142580509186 | 0.570985916566112 | 0.5122591257095337 | 0.3854380398988724 | 0.8386396169662476 | -0.2597668169851535 | -0.128839984536171 | 141 | 758 |
+| leanforward_1m | SITTING | 1.0 | 0.353716455763481 | 0.3816918879747391 | 0.2698584377765655 | 0.4286794066429138 | 0.5505087623364815 | 0.5232395827770233 | 0.4794996380805969 | 0.642262214422226 | -0.1967923065730005 | -0.1412695497274399 | 0 | 474 |
+| leanforward_2m | SITTING | 2.0 | 0.43414773596729683 | 0.5000103116035461 | 0.2045018821954727 | 0.5000103116035461 | 0.482405633712121 | 0.418610543012619 | 0.418610543012619 | 0.7157810926437378 | -0.048257897744824134 | 0.08139976859092712 | 445 | 256 |
+| leanforward_3m | SITTING | 3.0 | 0.5457149662423901 | 0.5729219317436218 | 0.47568036019802096 | 0.5876362323760986 | 0.3802917381482465 | 0.3541695773601532 | 0.3384601473808288 | 0.4504076719284057 | 0.16542322809414362 | 0.21929672360420227 | 761 | 79 |
+| leanforward_4m | SITTING | 4.0 | 0.45012592212054764 | 0.4694965481758117 | 0.4694965481758117 | 0.4694965481758117 | 0.44956500819652756 | 0.4480039477348327 | 0.4480039477348327 | 0.4480039477348327 | 0.0005609139240201498 | 0.021492600440979004 | 485 | 27 |
+| leanforward_5m | SITTING | 5.0 | 0.6616438014791646 | 0.6793028712272644 | 0.6793028712272644 | 0.6793028712272644 | 0.27072017113549995 | 0.2576984465122223 | 0.2576984465122223 | 0.2576984465122223 | 0.3909236303436647 | 0.4216044247150421 | 417 | 19 |
+
+## Tracking vs posture comparison
+| segment_id | expected_pose | expected_distance_m | tracking_presence_rate | range_mae_m | extra_track_rate | tid_switch_count | posture_accuracy | dominant_wrong_pose | quality_NO_POINTS_rate | mean_geom_pts | main_failure_hypothesis |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| standing_1m | STANDING | 1.0 | 1.0 | 0.02314756384259574 | 0.0 | 0 | 0.9772492244053774 | SITTING | 0.22543950361944157 | 3.157187176835574 | no major failure detected |
+| standing_2m | STANDING | 2.0 | 1.0 | 0.07643111489024264 | 0.0 | 0 | 0.982648401826484 | SITTING | 0.6566210045662101 | 0.8146118721461187 | no major failure detected |
+| standing_3m | STANDING | 3.0 | 1.0 | 0.08163204410681212 | 0.0 | 0 | 0.8241469816272966 | SITTING | 0.7349081364829396 | 1.0376202974628173 | no major failure detected |
+| standing_4m | STANDING | 4.0 | 1.0 | 0.1533473584138242 | 0.0 | 0 | 1.0 | NA | 0.9734693877551021 | 0.04285714285714286 | no major failure detected |
+| standing_5m | STANDING | 5.0 | 1.0 | 0.0195058180130972 | 0.0 | 0 | 1.0 | NA | 0.9240282685512368 | 0.1501766784452297 | no major failure detected |
+| leanback_1m | SITTING | 1.0 | 1.0 | 0.08436980714989298 | 0.0 | 0 | 1.0 | NA | 0.889763779527559 | 0.20669291338582677 | no major failure detected |
+| leanback_2m | SITTING | 2.0 | 1.0 | 0.1575702145729947 | 0.0 | 0 | 0.9978768577494692 | MOVING | 0.9469214437367304 | 0.18471337579617833 | no major failure detected |
+| leanback_3m | SITTING | 3.0 | 1.0 | 0.04789129559056366 | 0.0 | 0 | 0.861003861003861 | STANDING | 0.9343629343629344 | 0.13706563706563707 | no major failure detected |
+| leanback_4m | SITTING | 4.0 | 1.0 | 0.07432850010652879 | 0.0 | 0 | 0.0 | STANDING | 0.9865671641791045 | 0.03582089552238806 | sit-vs-stand discrimination under sparse geometry |
+| leanback_5m | SITTING | 5.0 | 1.0 | 0.30561055334716225 | 0.0 | 0 | 0.0 | STANDING | 0.9983922829581994 | 0.003215434083601286 | sit-vs-stand discrimination under sparse geometry |
+| upright_1m | SITTING | 1.0 | 1.0 | 0.05602169940888294 | 0.0 | 0 | 0.10025062656641603 | STANDING | 0.6382623224728488 | 1.3032581453634084 | sit-vs-stand discrimination under sparse geometry |
+| upright_2m | SITTING | 2.0 | 1.0 | 0.0672603963392785 | 0.0 | 0 | 1.0 | NA | 0.9128949615713066 | 0.2228864218616567 | no major failure detected |
+| upright_3m | SITTING | 3.0 | 1.0 | 0.10679851017714041 | 0.0 | 0 | 0.1680960548885077 | STANDING | 0.8473413379073756 | 0.3979416809605489 | sit-vs-stand discrimination under sparse geometry |
+| upright_4m | SITTING | 4.0 | 1.0 | 0.1327713130632115 | 0.0 | 0 | 0.0 | STANDING | 0.968421052631579 | 0.11157894736842106 | sit-vs-stand discrimination under sparse geometry |
+| upright_5m | SITTING | 5.0 | 0.9977973568281938 | 4.222803701883554 | 0.0 | 0 | 0.48013245033112584 | STANDING | 0.6986754966887417 | 2.2660044150110377 | sit-vs-stand discrimination under sparse geometry |
+| leanforward_1m | SITTING | 1.0 | 1.0 | 0.3853768251832544 | 0.0 | 0 | 0.9789029535864979 | MOVING | 0.8227848101265823 | 0.8649789029535865 | no major failure detected |
+| leanforward_2m | SITTING | 2.0 | 1.0 | 0.4156802491839042 | 0.0 | 0 | 0.42082738944365194 | STANDING | 0.9101283880171184 | 0.47075606276747506 | sit-vs-stand discrimination under sparse geometry |
+| leanforward_3m | SITTING | 3.0 | 1.0 | 0.4635896963703055 | 0.0 | 0 | 0.03571428571428571 | STANDING | 0.95 | 0.16666666666666666 | sit-vs-stand discrimination under sparse geometry |
+| leanforward_4m | SITTING | 4.0 | 0.9961612284069098 | 0.47936500858085856 | 0.0 | 0 | 0.9653179190751445 | MOVING | 0.9710982658959537 | 0.10982658959537572 | no major failure detected |
+| leanforward_5m | SITTING | 5.0 | 1.0 | 0.39307629617217876 | 0.0 | 0 | 0.0 | STANDING | 0.9793577981651376 | 0.06422018348623854 | sit-vs-stand discrimination under sparse geometry |
+
+## Per-distance findings
+| expected_distance_m | tracking_presence_rate | range_mae_m | posture_accuracy |
+| --- | --- | --- | --- |
+| 1.0 | 1.0 | 0.13722897389615651 | 0.7641007011395728 |
+| 2.0 | 1.0 | 0.17923549374660502 | 0.8503381622549013 |
+| 3.0 | 1.0 | 0.17497788656120541 | 0.47224029580848775 |
+| 4.0 | 0.9990403071017274 | 0.20995304504110576 | 0.49132947976878616 |
+| 5.0 | 0.9994493392070485 | 1.235249092353998 | 0.3700331125827815 |
+
+## Per-pose findings
+| expected_pose | tracking_presence_rate | posture_accuracy |
+| --- | --- | --- |
+| SITTING | 0.9995972390156737 | 0.46720815989059733 |
+| STANDING | 1.0 | 0.9568089215718316 |
+
+## Ghost/shadow analysis
+No measurable ghost/shadow issue in this benchmark session after the latest validation changes.
+
+No rendered ghost tracks observed; suppressed suspect-track statistics were not available/parsed.
+
+| segment_id | mean_active_tracks | max_active_tracks | extra_track_rate | frames_with_extra_tracks | suspect_frames_if_available | provisional_frames_if_available | confirmed_frames_if_available | ghost_verdict | notes |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| standing_1m | 1.0 | 1.0 | 0.0 | 0 | NA | NA | NA | GOOD_NO_EXTRA_TRACKS | No extra tracks beyond expected_person_count=1; suppressed suspect-track statistics were not available/parsed. |
+| standing_2m | 1.0 | 1.0 | 0.0 | 0 | NA | NA | NA | GOOD_NO_EXTRA_TRACKS | No extra tracks beyond expected_person_count=1; suppressed suspect-track statistics were not available/parsed. |
+| standing_3m | 1.0 | 1.0 | 0.0 | 0 | NA | NA | NA | GOOD_NO_EXTRA_TRACKS | No extra tracks beyond expected_person_count=1; suppressed suspect-track statistics were not available/parsed. |
+| standing_4m | 1.0 | 1.0 | 0.0 | 0 | NA | NA | NA | GOOD_NO_EXTRA_TRACKS | No extra tracks beyond expected_person_count=1; suppressed suspect-track statistics were not available/parsed. |
+| standing_5m | 1.0 | 1.0 | 0.0 | 0 | NA | NA | NA | GOOD_NO_EXTRA_TRACKS | No extra tracks beyond expected_person_count=1; suppressed suspect-track statistics were not available/parsed. |
+| leanback_1m | 1.0 | 1.0 | 0.0 | 0 | NA | NA | NA | GOOD_NO_EXTRA_TRACKS | No extra tracks beyond expected_person_count=1; suppressed suspect-track statistics were not available/parsed. |
+| leanback_2m | 1.0 | 1.0 | 0.0 | 0 | NA | NA | NA | GOOD_NO_EXTRA_TRACKS | No extra tracks beyond expected_person_count=1; suppressed suspect-track statistics were not available/parsed. |
+| leanback_3m | 1.0 | 1.0 | 0.0 | 0 | NA | NA | NA | GOOD_NO_EXTRA_TRACKS | No extra tracks beyond expected_person_count=1; suppressed suspect-track statistics were not available/parsed. |
+| leanback_4m | 1.0 | 1.0 | 0.0 | 0 | NA | NA | NA | GOOD_NO_EXTRA_TRACKS | No extra tracks beyond expected_person_count=1; suppressed suspect-track statistics were not available/parsed. |
+| leanback_5m | 1.0 | 1.0 | 0.0 | 0 | NA | NA | NA | GOOD_NO_EXTRA_TRACKS | No extra tracks beyond expected_person_count=1; suppressed suspect-track statistics were not available/parsed. |
+| upright_1m | 1.0 | 1.0 | 0.0 | 0 | NA | NA | NA | GOOD_NO_EXTRA_TRACKS | No extra tracks beyond expected_person_count=1; suppressed suspect-track statistics were not available/parsed. |
+| upright_2m | 1.0 | 1.0 | 0.0 | 0 | NA | NA | NA | GOOD_NO_EXTRA_TRACKS | No extra tracks beyond expected_person_count=1; suppressed suspect-track statistics were not available/parsed. |
+| upright_3m | 1.0 | 1.0 | 0.0 | 0 | NA | NA | NA | GOOD_NO_EXTRA_TRACKS | No extra tracks beyond expected_person_count=1; suppressed suspect-track statistics were not available/parsed. |
+| upright_4m | 1.0 | 1.0 | 0.0 | 0 | NA | NA | NA | GOOD_NO_EXTRA_TRACKS | No extra tracks beyond expected_person_count=1; suppressed suspect-track statistics were not available/parsed. |
+| upright_5m | 1.0 | 1.0 | 0.0 | 0 | NA | NA | NA | GOOD_NO_EXTRA_TRACKS | No extra tracks beyond expected_person_count=1; suppressed suspect-track statistics were not available/parsed. |
+| leanforward_1m | 1.0 | 1.0 | 0.0 | 0 | NA | NA | NA | GOOD_NO_EXTRA_TRACKS | No extra tracks beyond expected_person_count=1; suppressed suspect-track statistics were not available/parsed. |
+| leanforward_2m | 1.0 | 1.0 | 0.0 | 0 | NA | NA | NA | GOOD_NO_EXTRA_TRACKS | No extra tracks beyond expected_person_count=1; suppressed suspect-track statistics were not available/parsed. |
+| leanforward_3m | 1.0 | 1.0 | 0.0 | 0 | NA | NA | NA | GOOD_NO_EXTRA_TRACKS | No extra tracks beyond expected_person_count=1; suppressed suspect-track statistics were not available/parsed. |
+| leanforward_4m | 1.0 | 1.0 | 0.0 | 0 | NA | NA | NA | GOOD_NO_EXTRA_TRACKS | No extra tracks beyond expected_person_count=1; suppressed suspect-track statistics were not available/parsed. |
+| leanforward_5m | 1.0 | 1.0 | 0.0 | 0 | NA | NA | NA | GOOD_NO_EXTRA_TRACKS | No extra tracks beyond expected_person_count=1; suppressed suspect-track statistics were not available/parsed. |
+
+Legacy ghost-track candidates:
+
+_No data._
+
+## NO_POINTS / geom_pts analysis
+Point-density: NO_POINTS is common in both standing and sitting, but only sitting collapses. Therefore the primary failure is sitting-vs-standing discrimination under sparse geometry, not general tracking loss.
+
+| segment_id | expected_pose | bucket | frames | accuracy |
+| --- | --- | --- | --- | --- |
+| standing_1m | STANDING | quality_OK | 90 | 0.9333333333333333 |
+| standing_1m | STANDING | LOW_POINTS | 626 | 0.9856230031948882 |
+| standing_1m | STANDING | NO_POINTS | 218 | 0.9724770642201835 |
+| standing_1m | STANDING | geom_pts_0 | 218 | 0.9724770642201835 |
+| standing_1m | STANDING | geom_pts_ge_3 | 502 | 0.9741035856573705 |
+| standing_2m | STANDING | quality_OK | 9 | 1.0 |
+| standing_2m | STANDING | LOW_POINTS | 365 | 0.9698630136986301 |
+| standing_2m | STANDING | NO_POINTS | 719 | 0.9888734353268428 |
+| standing_2m | STANDING | geom_pts_0 | 719 | 0.9888734353268428 |
+| standing_2m | STANDING | geom_pts_ge_3 | 133 | 0.9699248120300752 |
+| standing_3m | STANDING | quality_OK | 29 | 0.13793103448275862 |
+| standing_3m | STANDING | LOW_POINTS | 264 | 0.5681818181818182 |
+| standing_3m | STANDING | NO_POINTS | 840 | 0.9285714285714286 |
+| standing_3m | STANDING | geom_pts_0 | 840 | 0.9285714285714286 |
+| standing_3m | STANDING | geom_pts_ge_3 | 174 | 0.4482758620689655 |
+| standing_4m | STANDING | quality_OK | 0 | NA |
+| standing_4m | STANDING | LOW_POINTS | 13 | 1.0 |
+| standing_4m | STANDING | NO_POINTS | 477 | 1.0 |
+| standing_4m | STANDING | geom_pts_0 | 477 | 1.0 |
+| standing_4m | STANDING | geom_pts_ge_3 | 2 | 1.0 |
+
+_Showing 20 of 100 rows._
+
+## NO_POINTS effect by pose
+| expected_pose | expected_distance_m | quality_bucket | frames | accuracy | standing_rate | sitting_rate | mean_stand_prob | mean_sit_prob |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| STANDING | 1.0 | NO_POINTS | 218 | 0.9724770642201835 | 0.9724770642201835 | 0.022935779816513763 | 0.5849242762004564 | 0.36329257375466717 |
+| STANDING | 1.0 | LOW_POINTS | 626 | 0.9856230031948882 | 0.9856230031948882 | 0.006389776357827476 | 0.4666916011526181 | 0.48235485559930436 |
+| STANDING | 1.0 | HAS_POINTS | 123 | 0.943089430894309 | 0.943089430894309 | 0.024390243902439025 | 0.35738855685160414 | 0.5820710351312064 |
+| STANDING | 2.0 | NO_POINTS | 719 | 0.9888734353268428 | 0.9888734353268428 | 0.011126564673157162 | 0.608630133582919 | 0.3291776274565364 |
+| STANDING | 2.0 | LOW_POINTS | 365 | 0.9698630136986301 | 0.9698630136986301 | 0.030136986301369864 | 0.5305066783950754 | 0.40950623322023105 |
+| STANDING | 2.0 | HAS_POINTS | 11 | 1.0 | 1.0 | 0.0 | 0.48223234713077545 | 0.46109089526263153 |
+| STANDING | 3.0 | NO_POINTS | 840 | 0.9285714285714286 | 0.9285714285714286 | 0.07142857142857142 | 0.6148587455751285 | 0.31884487090366226 |
+| STANDING | 3.0 | LOW_POINTS | 264 | 0.5681818181818182 | 0.5681818181818182 | 0.4318181818181818 | 0.3910368996474779 | 0.5389581888236783 |
+| STANDING | 3.0 | HAS_POINTS | 39 | 0.3076923076923077 | 0.3076923076923077 | 0.6923076923076923 | 0.2505388506807578 | 0.6795979692385747 |
+| STANDING | 4.0 | NO_POINTS | 477 | 1.0 | 1.0 | 0.0 | 0.7759876936611639 | 0.16968946802416188 |
+| STANDING | 4.0 | LOW_POINTS | 13 | 1.0 | 1.0 | 0.0 | 0.6845948237639207 | 0.22384647222665638 |
+| STANDING | 5.0 | NO_POINTS | 1046 | 1.0 | 1.0 | 0.0 | 0.8761906771142441 | 0.08393790152272916 |
+| STANDING | 5.0 | LOW_POINTS | 86 | 1.0 | 1.0 | 0.0 | 0.8520100809807001 | 0.09520212578219032 |
+| SITTING | 1.0 | NO_POINTS | 452 | 1.0 | 0.0 | 1.0 | 0.2603279057461604 | 0.6009596598095599 |
+| SITTING | 1.0 | LOW_POINTS | 56 | 1.0 | 0.0 | 1.0 | 0.22200037366045372 | 0.6516817861369678 |
+| SITTING | 2.0 | NO_POINTS | 446 | 1.0 | 0.0 | 1.0 | 0.4807232820570903 | 0.43176817132218537 |
+| SITTING | 2.0 | LOW_POINTS | 19 | 1.0 | 0.0 | 1.0 | 0.08571518404948474 | 0.8436168118527061 |
+| SITTING | 2.0 | HAS_POINTS | 6 | 0.8333333333333334 | 0.0 | 0.8333333333333334 | 0.014114233975609099 | 0.9493531088034312 |
+| SITTING | 3.0 | NO_POINTS | 484 | 0.9049586776859504 | 0.09504132231404959 | 0.9049586776859504 | 0.3792723794429263 | 0.523162491619587 |
+| SITTING | 3.0 | LOW_POINTS | 33 | 0.24242424242424243 | 0.7575757575757576 | 0.24242424242424243 | 0.30324197312196094 | 0.6190684383565729 |
+
+_Showing 20 of 55 rows._
+
+## Moving false-positive analysis
+| segment_id | expected_pose | expected_distance_m | moving_rate |
+| --- | --- | --- | --- |
+| standing_1m | STANDING | 1.0 | 0.010341261633919338 |
+| standing_2m | STANDING | 2.0 | 0.0 |
+| standing_3m | STANDING | 3.0 | 0.0 |
+| standing_4m | STANDING | 4.0 | 0.0 |
+| standing_5m | STANDING | 5.0 | 0.0 |
+| leanback_1m | SITTING | 1.0 | 0.0 |
+| leanback_2m | SITTING | 2.0 | 0.0021231422505307855 |
+| leanback_3m | SITTING | 3.0 | 0.0 |
+| leanback_4m | SITTING | 4.0 | 0.0 |
+| leanback_5m | SITTING | 5.0 | 0.0 |
+| upright_1m | SITTING | 1.0 | 0.004177109440267335 |
+| upright_2m | SITTING | 2.0 | 0.0 |
+| upright_3m | SITTING | 3.0 | 0.0 |
+| upright_4m | SITTING | 4.0 | 0.0 |
+| upright_5m | SITTING | 5.0 | 0.08278145695364239 |
+| leanforward_1m | SITTING | 1.0 | 0.02109704641350211 |
+| leanforward_2m | SITTING | 2.0 | 0.0 |
+| leanforward_3m | SITTING | 3.0 | 0.0 |
+| leanforward_4m | SITTING | 4.0 | 0.02119460500963391 |
+| leanforward_5m | SITTING | 5.0 | 0.07110091743119266 |
+
+## Sitting-vs-standing confusion analysis
+| segment_id | expected_pose | dominant_display_pose | dominant_wrong_pose | standing_rate | sitting_rate | accuracy |
+| --- | --- | --- | --- | --- | --- | --- |
+| standing_1m | STANDING | STANDING | SITTING | 0.9772492244053774 | 0.012409513960703205 | 0.9772492244053774 |
+| standing_2m | STANDING | STANDING | SITTING | 0.982648401826484 | 0.017351598173515982 | 0.982648401826484 |
+| standing_3m | STANDING | STANDING | SITTING | 0.8241469816272966 | 0.17585301837270342 | 0.8241469816272966 |
+| standing_4m | STANDING | STANDING | NA | 1.0 | 0.0 | 1.0 |
+| standing_5m | STANDING | STANDING | NA | 1.0 | 0.0 | 1.0 |
+| leanback_1m | SITTING | SITTING | NA | 0.0 | 1.0 | 1.0 |
+| leanback_2m | SITTING | SITTING | MOVING | 0.0 | 0.9978768577494692 | 0.9978768577494692 |
+| leanback_3m | SITTING | SITTING | STANDING | 0.138996138996139 | 0.861003861003861 | 0.861003861003861 |
+| leanback_4m | SITTING | STANDING | STANDING | 1.0 | 0.0 | 0.0 |
+| leanback_5m | SITTING | STANDING | STANDING | 1.0 | 0.0 | 0.0 |
+| upright_1m | SITTING | STANDING | STANDING | 0.8955722639933166 | 0.10025062656641603 | 0.10025062656641603 |
+| upright_2m | SITTING | SITTING | NA | 0.0 | 1.0 | 1.0 |
+| upright_3m | SITTING | STANDING | STANDING | 0.8319039451114922 | 0.1680960548885077 | 0.1680960548885077 |
+| upright_4m | SITTING | STANDING | STANDING | 1.0 | 0.0 | 0.0 |
+| upright_5m | SITTING | SITTING | STANDING | 0.4227373068432671 | 0.48013245033112584 | 0.48013245033112584 |
+| leanforward_1m | SITTING | SITTING | MOVING | 0.0 | 0.9789029535864979 | 0.9789029535864979 |
+| leanforward_2m | SITTING | STANDING | STANDING | 0.579172610556348 | 0.42082738944365194 | 0.42082738944365194 |
+| leanforward_3m | SITTING | STANDING | STANDING | 0.9642857142857143 | 0.03571428571428571 | 0.03571428571428571 |
+| leanforward_4m | SITTING | SITTING | MOVING | 0.0 | 0.9653179190751445 | 0.9653179190751445 |
+| leanforward_5m | SITTING | STANDING | STANDING | 0.9288990825688074 | 0.0 | 0.0 |
+
+## RGB sanity check if available
+RGB logs are used as supplementary sanity checks only; mmWave tracking and posture metrics do not require RGB.
+
+## Key plots
+- `plots/timeline_range_by_track.png`
+- `plots/timeline_active_track_count.png`
+- `plots/timeline_display_pose.png`
+- `plots/timeline_quality_geom_pts.png`
+- `plots/timeline_stand_sit_probs.png`
+- `plots/stand_vs_sit_probability_by_segment.png`
+- `plots/stand_minus_sit_margin_by_segment.png`
+- `plots/sitting_segments_stand_sit_prob_timeline.png`
+- `plots/tracking_presence_by_distance.png`
+- `plots/range_error_by_distance.png`
+- `plots/range_jitter_by_distance.png`
+- `plots/ghost_rate_by_distance.png`
+- `plots/tid_switches_by_distance.png`
+- `plots/xy_position_scatter_by_segment.png`
+- `plots/posture_accuracy_by_distance.png`
+- `plots/posture_confusion_matrix.png`
+- `plots/pose_distribution_by_segment.png`
+- `plots/posture_accuracy_vs_geom_pts.png`
+- `plots/posture_accuracy_by_quality.png`
+- `plots/moving_false_positive_rate.png`
+- `plots/false_falling_rate_by_segment.png`
+- `plots/time_to_stable_correct_by_segment.png`
+- `plots/tracking_vs_posture_summary.png`
+- `plots/failure_mode_heatmap.png`
+
+## Ranked issues
+No high-severity automatic issue was detected.
+
+## Recommended next fixes
+Inspect segment boundaries first, then rerun with manual segments if needed.
+
+## Next experiment plan
+Experiment A: Verify auto segments manually with RGB video.
+Experiment B: Repeat sitting-only 2m/3m/4m with the original cfg and a static-retention/fine-motion cfg.
+Experiment C: Compare geom_pts, NO_POINTS rate, sit_prob, and stand_prob between configs.
+Experiment D: Only after the point/geometry comparison, tune sit-vs-stand gates.
+
+`staticRangeAngleCfg -1 0 8 8` disables static processing. If seated targets remain sparse, compare against TI `ODS_6m_staticRetention.cfg` / fineMotionCfg variants before changing posture thresholds.
