@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import os
+import queue
 import sys
+import threading
 import time
 from datetime import datetime
 from pathlib import Path
@@ -110,6 +112,50 @@ def _configure_capture(cv2_module, capture, source: RgbSource, width: int, heigh
     capture.set(cv2_module.CAP_PROP_BUFFERSIZE, 1)
 
 
+def _capture_info(cv2_module, capture, source: RgbSource, backend: str, opened: bool) -> dict[str, object]:
+    width = int(capture.get(cv2_module.CAP_PROP_FRAME_WIDTH) or 0) if opened else 0
+    height = int(capture.get(cv2_module.CAP_PROP_FRAME_HEIGHT) or 0) if opened else 0
+    fps = float(capture.get(cv2_module.CAP_PROP_FPS) or 0.0) if opened else 0.0
+    return {
+        "source": str(source),
+        "resolved_source": str(source),
+        "backend": str(backend),
+        "opened": bool(opened),
+        "width": width,
+        "height": height,
+        "fps": fps,
+    }
+
+
+def _camera_status_text(info: dict[str, object]) -> str:
+    source = info.get("resolved_source") or info.get("source")
+    if not info.get("opened"):
+        return f"RGB camera: failed to open source={source}"
+    return (
+        "RGB camera: source={} {}x{} @ {:.1f} fps".format(
+            source,
+            int(info.get("width") or 0),
+            int(info.get("height") or 0),
+            float(info.get("fps") or 0.0),
+        )
+    )
+
+
+def _emit_camera_startup_status(status_signal, info: dict[str, object]) -> None:
+    print(f"[RGB_CAMERA] selected_source={info.get('resolved_source')}", flush=True)
+    print(f"[RGB_CAMERA] backend={info.get('backend')}", flush=True)
+    print(f"[RGB_CAMERA] opened={str(bool(info.get('opened'))).lower()}", flush=True)
+    print(
+        "[RGB_CAMERA] width={} height={} fps={:.1f}".format(
+            int(info.get("width") or 0),
+            int(info.get("height") or 0),
+            float(info.get("fps") or 0.0),
+        ),
+        flush=True,
+    )
+    status_signal.emit(_camera_status_text(info))
+
+
 def _rgb_array_to_qimage(rgb: np.ndarray) -> QImage:
     rgb = np.ascontiguousarray(rgb)
     height, width, channels = rgb.shape
@@ -212,10 +258,211 @@ def _draw_label(cv2_module, frame: np.ndarray, text: str, origin: tuple[int, int
     )
 
 
+class AsyncRgbVideoWriter:
+    """Non-blocking RGB frame recorder for already-annotated display frames."""
+
+    def __init__(
+        self,
+        output_path: object,
+        fps: float,
+        codec: str,
+        max_queue: int,
+        camera_metadata: Optional[dict[str, object]] = None,
+        on_status=None,
+        on_event=None,
+    ) -> None:
+        self.output_path = Path(str(output_path)).expanduser()
+        self.fps = float(fps) if fps and float(fps) > 0 else 20.0
+        self.codec = str(codec or "mp4v")[:4].ljust(4)
+        self.max_queue = max(1, int(max_queue))
+        self._on_status = on_status
+        self._on_event = on_event
+        self._camera_metadata = dict(camera_metadata or {})
+        self._queue: queue.Queue[Optional[np.ndarray]] = queue.Queue(maxsize=self.max_queue)
+        self._thread: Optional[threading.Thread] = None
+        self._stop_requested = threading.Event()
+        self._disabled = False
+        self._writer = None
+        self._width = None
+        self._height = None
+        self.frames_written = 0
+        self.frames_dropped = 0
+        self._failure_reported = False
+        self._started_reported = False
+
+    def start(self) -> None:
+        if self._thread is not None:
+            return
+        self.output_path.parent.mkdir(parents=True, exist_ok=True)
+        self._thread = threading.Thread(target=self._run, name="RgbAnnotatedVideoWriter", daemon=True)
+        self._thread.start()
+
+    def enqueue(self, rgb_frame: np.ndarray) -> None:
+        if self._disabled or self._thread is None:
+            return
+        try:
+            self._queue.put_nowait(np.ascontiguousarray(rgb_frame).copy())
+        except queue.Full:
+            self.frames_dropped += 1
+
+    def stop(self) -> dict[str, object]:
+        if self._thread is None:
+            return self.stats()
+        self._stop_requested.set()
+        try:
+            self._queue.put_nowait(None)
+        except queue.Full:
+            self._drop_one_pending_frame()
+            try:
+                self._queue.put_nowait(None)
+            except queue.Full:
+                pass
+        self._thread.join(timeout=3.0)
+        if self._thread.is_alive():
+            self._emit_status(
+                "[RGB_VIDEO] warning: writer did not stop within timeout; video may finalize late"
+            )
+        self._thread = None
+        stats = self.stats()
+        self._emit_status(
+            "[RGB_VIDEO] saved={} frames={} dropped={}".format(
+                self.output_path,
+                self.frames_written,
+                self.frames_dropped,
+            )
+        )
+        self._emit_event("rgb_video_recording_stopped", stats)
+        return stats
+
+    def _drop_one_pending_frame(self) -> None:
+        try:
+            item = self._queue.get_nowait()
+        except queue.Empty:
+            return
+        if item is not None:
+            self.frames_dropped += 1
+
+    def stats(self) -> dict[str, object]:
+        payload = {
+            "path": str(self.output_path),
+            "fps": self.fps,
+            "codec": self.codec,
+            "width": self._width,
+            "height": self._height,
+            "frames_written": self.frames_written,
+            "frames_dropped": self.frames_dropped,
+            "disabled": self._disabled,
+        }
+        payload.update(self._camera_metadata)
+        return payload
+
+    def _run(self) -> None:
+        try:
+            import cv2
+        except Exception as exc:  # pragma: no cover - depends on local install
+            self._fail(f"OpenCV import failed for RGB video writer: {exc}")
+            return
+
+        try:
+            while True:
+                try:
+                    item = self._queue.get(timeout=0.25)
+                except queue.Empty:
+                    if self._stop_requested.is_set():
+                        break
+                    continue
+                if item is None:
+                    break
+                if self._disabled:
+                    continue
+                self._write_frame(cv2, item)
+        except Exception as exc:  # pragma: no cover - defensive writer isolation
+            self._fail(str(exc))
+        finally:
+            if self._writer is not None:
+                try:
+                    self._writer.release()
+                except Exception:
+                    pass
+                self._writer = None
+
+    def _write_frame(self, cv2_module, rgb_frame: np.ndarray) -> None:
+        height, width = rgb_frame.shape[:2]
+        if self._writer is None:
+            fourcc = cv2_module.VideoWriter_fourcc(*self.codec)
+            self._writer = cv2_module.VideoWriter(
+                str(self.output_path),
+                fourcc,
+                self.fps,
+                (int(width), int(height)),
+            )
+            if not self._writer.isOpened():
+                self._fail(
+                    "failed to open writer path={} codec={} fps={} size={}x{}".format(
+                        self.output_path,
+                        self.codec,
+                        self.fps,
+                        width,
+                        height,
+                    )
+                )
+                return
+            self._width = int(width)
+            self._height = int(height)
+            self._started_reported = True
+            self._emit_status(
+                "[RGB_VIDEO] recording {} fps={} codec={} size={}x{}".format(
+                    self.output_path,
+                    self.fps,
+                    self.codec,
+                    width,
+                    height,
+                )
+            )
+            self._emit_event("rgb_video_recording_started", self.stats())
+
+        if width != self._width or height != self._height:
+            rgb_frame = cv2_module.resize(rgb_frame, (self._width, self._height))
+        bgr_frame = cv2_module.cvtColor(rgb_frame, cv2_module.COLOR_RGB2BGR)
+        try:
+            self._writer.write(bgr_frame)
+            self.frames_written += 1
+        except Exception as exc:
+            self._fail(f"write failed: {exc}")
+
+    def _fail(self, message: str) -> None:
+        self._disabled = True
+        if self._failure_reported:
+            return
+        self._failure_reported = True
+        payload = self.stats()
+        payload["error"] = message
+        self._emit_status(f"[RGB_VIDEO] warning: {message}; recording disabled")
+        self._emit_event("rgb_video_recording_failed", payload)
+
+    def _emit_status(self, message: str) -> None:
+        if self._on_status is not None:
+            try:
+                self._on_status(message)
+            except Exception:
+                pass
+        else:
+            print(message, flush=True)
+
+    def _emit_event(self, event_type: str, payload: dict[str, object]) -> None:
+        if self._on_event is None:
+            return
+        try:
+            self._on_event(event_type, payload)
+        except Exception:
+            pass
+
+
 class RgbCaptureWorker(QObject):
     frameReady = Signal(QImage)
     statusChanged = Signal(str)
     resultReady = Signal(dict)
+    videoEvent = Signal(str, dict)
     finished = Signal()
 
     def __init__(
@@ -226,6 +473,11 @@ class RgbCaptureWorker(QObject):
         height: int,
         fps: float,
         mirror: bool,
+        record_video: bool = False,
+        video_output: object = "",
+        video_fps: float = 0,
+        video_codec: str = "mp4v",
+        video_max_queue: int = 120,
     ) -> None:
         super().__init__()
         self.source = source
@@ -234,7 +486,23 @@ class RgbCaptureWorker(QObject):
         self.height = height
         self.fps = fps
         self.mirror = mirror
+        self.record_video = bool(record_video)
+        self.video_output = video_output
+        self.video_fps = video_fps
+        self.video_codec = video_codec
+        self.video_max_queue = video_max_queue
+        self._video_writer: Optional[AsyncRgbVideoWriter] = None
+        self._last_video_status_frame = 0
         self._running = False
+        self._camera_info: dict[str, object] = {
+            "source": str(source),
+            "resolved_source": str(source),
+            "backend": backend,
+            "opened": False,
+            "width": 0,
+            "height": 0,
+            "fps": 0.0,
+        }
 
     @Slot()
     def run(self) -> None:
@@ -251,12 +519,18 @@ class RgbCaptureWorker(QObject):
         try:
             capture = _open_capture(cv2, self.source, self.backend)
             if not capture.isOpened():
-                self.statusChanged.emit("RGB source unavailable")
+                self._camera_info = _capture_info(cv2, capture, self.source, self.backend, False)
+                self.videoEvent.emit("rgb_camera_selected", dict(self._camera_info))
+                _emit_camera_startup_status(self.statusChanged, self._camera_info)
                 self.finished.emit()
                 return
 
             _configure_capture(cv2, capture, self.source, self.width, self.height, self.fps)
-            self.statusChanged.emit(f"RGB source active: {self.source}")
+            self._camera_info = _capture_info(cv2, capture, self.source, self.backend, True)
+            self.videoEvent.emit("rgb_camera_selected", dict(self._camera_info))
+            reported_fps = float(capture.get(cv2.CAP_PROP_FPS) or 0.0)
+            self._start_video_writer(reported_fps)
+            _emit_camera_startup_status(self.statusChanged, self._camera_info)
             delay_ms = max(1, int(1000.0 / self.fps)) if self.fps > 0 else 1
             frame_count = 0
             fps_time = time.time()
@@ -286,6 +560,8 @@ class RgbCaptureWorker(QObject):
                         "host_wall_time_iso": _wall_time_iso(),
                         "host_monotonic_ns": monotonic,
                         "source": str(self.source),
+                        "resolved_source": str(self.source),
+                        "camera_backend": self.backend,
                         "width": width_px,
                         "height": height_px,
                         "fps_estimate": fps_estimate,
@@ -296,6 +572,7 @@ class RgbCaptureWorker(QObject):
                         "errors": [],
                     }
                 )
+                self._record_annotated_frame(rgb, frame_count)
                 self.frameReady.emit(_rgb_array_to_qimage(rgb))
                 QThread.msleep(delay_ms)
         except Exception as exc:  # pragma: no cover - defensive UI isolation
@@ -303,6 +580,7 @@ class RgbCaptureWorker(QObject):
         finally:
             if capture is not None:
                 capture.release()
+            self._stop_video_writer()
             self._running = False
             self.finished.emit()
 
@@ -310,11 +588,73 @@ class RgbCaptureWorker(QObject):
     def stop(self) -> None:
         self._running = False
 
+    def _start_video_writer(self, reported_fps: float) -> None:
+        if not self.record_video:
+            return
+        fps = self.video_fps if self.video_fps and self.video_fps > 0 else reported_fps
+        if not fps or fps <= 0:
+            fps = 20.0
+        self._video_writer = AsyncRgbVideoWriter(
+            self.video_output,
+            fps,
+            self.video_codec,
+            self.video_max_queue,
+            camera_metadata={
+                "source": str(self.source),
+                "resolved_source": str(self.source),
+                "backend": self.backend,
+                "camera_width": self._camera_info.get("width"),
+                "camera_height": self._camera_info.get("height"),
+                "camera_fps": self._camera_info.get("fps"),
+            },
+            on_status=self.statusChanged.emit,
+            on_event=self.videoEvent.emit,
+        )
+        try:
+            self._video_writer.start()
+        except Exception as exc:
+            self.statusChanged.emit(f"[RGB_VIDEO] warning: start failed: {exc}; recording disabled")
+            self.videoEvent.emit(
+                "rgb_video_recording_failed",
+                {
+                    "path": str(self.video_output),
+                    "fps": fps,
+                    "codec": self.video_codec,
+                    "source": str(self.source),
+                    "resolved_source": str(self.source),
+                    "backend": self.backend,
+                    "error": str(exc),
+                },
+            )
+            self._video_writer = None
+
+    def _record_annotated_frame(self, rgb_frame: np.ndarray, frame_count: int) -> None:
+        if self._video_writer is None:
+            return
+        self._video_writer.enqueue(rgb_frame)
+        if frame_count == 1 or frame_count - self._last_video_status_frame >= 60:
+            stats = self._video_writer.stats()
+            self.statusChanged.emit(
+                "RGB video: recording {}, frames={}, dropped={}".format(
+                    Path(str(stats["path"])).name,
+                    stats["frames_written"],
+                    stats["frames_dropped"],
+                )
+            )
+            self._last_video_status_frame = frame_count
+
+    def _stop_video_writer(self) -> None:
+        if self._video_writer is None:
+            return
+        self._video_writer.stop()
+        self._video_writer = None
+
 
 class RgbPostureWorker(QObject):
     frameReady = Signal(QImage)
     statusChanged = Signal(str)
     resultReady = Signal(dict)
+    videoEvent = Signal(str, dict)
     finished = Signal()
 
     def __init__(
@@ -333,6 +673,11 @@ class RgbPostureWorker(QObject):
         show_skeleton: bool,
         show_detected: bool,
         no_action: bool,
+        record_video: bool = False,
+        video_output: object = "",
+        video_fps: float = 0,
+        video_codec: str = "mp4v",
+        video_max_queue: int = 120,
     ) -> None:
         super().__init__()
         self.source = source
@@ -349,7 +694,23 @@ class RgbPostureWorker(QObject):
         self.show_skeleton = show_skeleton
         self.show_detected = show_detected
         self.no_action = no_action
+        self.record_video = bool(record_video)
+        self.video_output = video_output
+        self.video_fps = video_fps
+        self.video_codec = video_codec
+        self.video_max_queue = video_max_queue
+        self._video_writer: Optional[AsyncRgbVideoWriter] = None
+        self._last_video_status_frame = 0
         self._running = False
+        self._camera_info: dict[str, object] = {
+            "source": str(source),
+            "resolved_source": str(source),
+            "backend": backend,
+            "opened": False,
+            "width": 0,
+            "height": 0,
+            "fps": 0.0,
+        }
 
     @Slot()
     def run(self) -> None:
@@ -376,12 +737,18 @@ class RgbPostureWorker(QObject):
         try:
             capture = _open_capture(cv2, self.source, self.backend)
             if not capture.isOpened():
-                self.statusChanged.emit("RGB source unavailable")
+                self._camera_info = _capture_info(cv2, capture, self.source, self.backend, False)
+                self.videoEvent.emit("rgb_camera_selected", dict(self._camera_info))
+                _emit_camera_startup_status(self.statusChanged, self._camera_info)
                 self.finished.emit()
                 return
 
             _configure_capture(cv2, capture, self.source, self.width, self.height, self.fps)
+            self._camera_info = _capture_info(cv2, capture, self.source, self.backend, True)
+            self.videoEvent.emit("rgb_camera_selected", dict(self._camera_info))
             reported_fps = capture.get(cv2.CAP_PROP_FPS)
+            self._start_video_writer(float(reported_fps or 0.0))
+            _emit_camera_startup_status(self.statusChanged, self._camera_info)
             self.statusChanged.emit(
                 "RGB posture active "
                 f"({components['device']}, action={'off' if self.no_action else 'on'}, "
@@ -430,10 +797,12 @@ class RgbPostureWorker(QObject):
                     (0, 255, 0),
                 )
                 self.resultReady.emit(stats["result"])
+                self._record_annotated_frame(annotated, frame_count)
                 self.frameReady.emit(_rgb_array_to_qimage(annotated))
         finally:
             if capture is not None:
                 capture.release()
+            self._stop_video_writer()
             self._running = False
             self.finished.emit()
 
@@ -639,6 +1008,8 @@ class RgbPostureWorker(QObject):
                 "host_wall_time_iso": None,
                 "host_monotonic_ns": None,
                 "source": str(self.source),
+                "resolved_source": str(self.source),
+                "camera_backend": self.backend,
                 "width": frame_width,
                 "height": frame_height,
                 "fps_estimate": None,
@@ -655,9 +1026,71 @@ class RgbPostureWorker(QObject):
     def stop(self) -> None:
         self._running = False
 
+    def _start_video_writer(self, reported_fps: float) -> None:
+        if not self.record_video:
+            return
+        fps = self.video_fps if self.video_fps and self.video_fps > 0 else reported_fps
+        if not fps or fps <= 0:
+            fps = 20.0
+        self._video_writer = AsyncRgbVideoWriter(
+            self.video_output,
+            fps,
+            self.video_codec,
+            self.video_max_queue,
+            camera_metadata={
+                "source": str(self.source),
+                "resolved_source": str(self.source),
+                "backend": self.backend,
+                "camera_width": self._camera_info.get("width"),
+                "camera_height": self._camera_info.get("height"),
+                "camera_fps": self._camera_info.get("fps"),
+            },
+            on_status=self.statusChanged.emit,
+            on_event=self.videoEvent.emit,
+        )
+        try:
+            self._video_writer.start()
+        except Exception as exc:
+            self.statusChanged.emit(f"[RGB_VIDEO] warning: start failed: {exc}; recording disabled")
+            self.videoEvent.emit(
+                "rgb_video_recording_failed",
+                {
+                    "path": str(self.video_output),
+                    "fps": fps,
+                    "codec": self.video_codec,
+                    "source": str(self.source),
+                    "resolved_source": str(self.source),
+                    "backend": self.backend,
+                    "error": str(exc),
+                },
+            )
+            self._video_writer = None
+
+    def _record_annotated_frame(self, rgb_frame: np.ndarray, frame_count: int) -> None:
+        if self._video_writer is None:
+            return
+        self._video_writer.enqueue(rgb_frame)
+        if frame_count == 1 or frame_count - self._last_video_status_frame >= 60:
+            stats = self._video_writer.stats()
+            self.statusChanged.emit(
+                "RGB video: recording {}, frames={}, dropped={}".format(
+                    Path(str(stats["path"])).name,
+                    stats["frames_written"],
+                    stats["frames_dropped"],
+                )
+            )
+            self._last_video_status_frame = frame_count
+
+    def _stop_video_writer(self) -> None:
+        if self._video_writer is None:
+            return
+        self._video_writer.stop()
+        self._video_writer = None
+
 
 class RgbCameraPanel(QWidget):
     resultReady = Signal(dict)
+    videoEvent = Signal(str, dict)
 
     def __init__(
         self,
@@ -676,6 +1109,11 @@ class RgbCameraPanel(QWidget):
         show_skeleton: bool = False,
         show_detected: bool = False,
         no_action: bool = False,
+        record_video: bool = False,
+        video_output: object = "",
+        video_fps: float = 0,
+        video_codec: str = "mp4v",
+        video_max_queue: int = 120,
         parent: Optional[QWidget] = None,
     ) -> None:
         super().__init__(parent)
@@ -694,11 +1132,17 @@ class RgbCameraPanel(QWidget):
         self.show_skeleton = show_skeleton
         self.show_detected = show_detected
         self.no_action = no_action
+        self.record_video = bool(record_video)
+        self.video_output = video_output
+        self.video_fps = video_fps
+        self.video_codec = video_codec
+        self.video_max_queue = video_max_queue
         self._last_image: Optional[QImage] = None
         self._thread: Optional[QThread] = None
         self._worker: Optional[QObject] = None
 
-        self.title_label = QLabel("RGB Posture" if posture_enabled else "RGB Camera")
+        title = "RGB Posture" if posture_enabled else "RGB Camera"
+        self.title_label = QLabel(f"{title} - source={self.source}")
         self.title_label.setAlignment(Qt.AlignCenter)
         self.title_label.setStyleSheet("font-weight: 600; font-size: 14px;")
 
@@ -745,6 +1189,11 @@ class RgbCameraPanel(QWidget):
                 show_skeleton=self.show_skeleton,
                 show_detected=self.show_detected,
                 no_action=self.no_action,
+                record_video=self.record_video,
+                video_output=self.video_output,
+                video_fps=self.video_fps,
+                video_codec=self.video_codec,
+                video_max_queue=self.video_max_queue,
             )
         else:
             self._worker = RgbCaptureWorker(
@@ -754,6 +1203,11 @@ class RgbCameraPanel(QWidget):
                 height=self.height,
                 fps=self.fps,
                 mirror=self.mirror,
+                record_video=self.record_video,
+                video_output=self.video_output,
+                video_fps=self.video_fps,
+                video_codec=self.video_codec,
+                video_max_queue=self.video_max_queue,
             )
 
         self._worker.moveToThread(self._thread)
@@ -762,6 +1216,8 @@ class RgbCameraPanel(QWidget):
         self._worker.statusChanged.connect(self._on_status)
         if hasattr(self._worker, "resultReady"):
             self._worker.resultReady.connect(self._on_result)
+        if hasattr(self._worker, "videoEvent"):
+            self._worker.videoEvent.connect(self._on_video_event)
         self._worker.finished.connect(self._thread.quit)
         self._worker.finished.connect(self._worker.deleteLater)
         self._thread.finished.connect(self._thread.deleteLater)
@@ -804,6 +1260,10 @@ class RgbCameraPanel(QWidget):
     @Slot(dict)
     def _on_result(self, result: dict) -> None:
         self.resultReady.emit(result)
+
+    @Slot(str, dict)
+    def _on_video_event(self, event_type: str, payload: dict) -> None:
+        self.videoEvent.emit(event_type, payload)
 
     @Slot()
     def _on_thread_finished(self) -> None:

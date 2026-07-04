@@ -76,9 +76,23 @@ SITTING_DROP_DEFAULTS = {
 STAND_TO_SIT_GATE_MIN_CONFIDENCE_DEFAULT = 0.65
 STAND_TO_SIT_GATE_MARGIN_DEFAULT = 0.15
 STAND_TO_SIT_GATE_FRAMES_DEFAULT = 12
+SITTING_RELATIVE_GATE_ENABLED_DEFAULT = True
+SITTING_RELATIVE_RANGE_MIN_M_DEFAULT = 3.0
+SITTING_RELATIVE_MIN_PROB_DEFAULT = 0.55
+SITTING_RELATIVE_MARGIN_DEFAULT = 0.12
+SITTING_RELATIVE_FRAMES_DEFAULT = 16
+SITTING_RELATIVE_STANDING_VETO_PROB_DEFAULT = 0.50
+SITTING_RELATIVE_STANDING_VETO_MARGIN_DEFAULT = 0.05
+MOVING_OVERRIDE_REQUIRE_BODY_TRANSLATION_FOR_SITTING_DEFAULT = True
 SIT_TO_STAND_RECOVERY_MARGIN_DEFAULT = 0.10
 SIT_TO_STAND_RECOVERY_FRAMES_DEFAULT = 6
 ASSOC_METHODS = {"auto", "target_index", "nearest", "hybrid"}
+HUMAN_MODEL_STATE_PROVISIONAL = "PROVISIONAL"
+HUMAN_MODEL_STATE_CONFIRMED = "CONFIRMED"
+HUMAN_MODEL_STATE_SUSPECT = "SUSPECT_GHOST"
+HUMAN_MODEL_STATE_LOST = "LOST"
+HUMAN_MODEL_BAD_QUALITIES = {"NO_POINTS", "TARGET_ONLY"}
+HUMAN_MODEL_WEAK_QUALITIES = {"NO_POINTS", "TARGET_ONLY", "LOW_POINTS"}
 
 
 class TiStylePoseManager:
@@ -158,6 +172,20 @@ class TiStylePoseManager:
         stand_to_sit_margin: float = STAND_TO_SIT_GATE_MARGIN_DEFAULT,
         stand_to_sit_frames: int = STAND_TO_SIT_GATE_FRAMES_DEFAULT,
         stand_to_sit_allow_target_only: bool = False,
+        sitting_relative_gate: bool = SITTING_RELATIVE_GATE_ENABLED_DEFAULT,
+        sitting_relative_range_min_m: float = SITTING_RELATIVE_RANGE_MIN_M_DEFAULT,
+        sitting_relative_min_prob: float = SITTING_RELATIVE_MIN_PROB_DEFAULT,
+        sitting_relative_margin: float = SITTING_RELATIVE_MARGIN_DEFAULT,
+        sitting_relative_frames: int = SITTING_RELATIVE_FRAMES_DEFAULT,
+        sitting_relative_standing_veto_prob: float = (
+            SITTING_RELATIVE_STANDING_VETO_PROB_DEFAULT
+        ),
+        sitting_relative_standing_veto_margin: float = (
+            SITTING_RELATIVE_STANDING_VETO_MARGIN_DEFAULT
+        ),
+        moving_override_require_body_translation_for_sitting: bool = (
+            MOVING_OVERRIDE_REQUIRE_BODY_TRANSLATION_FOR_SITTING_DEFAULT
+        ),
         sit_to_stand_recovery_margin: float = SIT_TO_STAND_RECOVERY_MARGIN_DEFAULT,
         sit_to_stand_recovery_frames: int = SIT_TO_STAND_RECOVERY_FRAMES_DEFAULT,
         min_associated_points_for_inference: int = 1,
@@ -170,6 +198,17 @@ class TiStylePoseManager:
         label_debug: bool = False,
         enable_human_models: bool = False,
         human_model_debug: bool = False,
+        human_model_stale_frames: int = 10,
+        human_model_ghost_distance_m: float = 0.75,
+        human_model_confirm_frames: int = 5,
+        human_model_confirm_min_geom_pts: int = 3,
+        human_model_confirm_min_quality_frames: int = 3,
+        human_model_confirmed_grace_frames: int = 30,
+        human_model_bad_evidence_demote_frames: int = 60,
+        human_model_ghost_min_bad_frames: int = 8,
+        human_model_ghost_no_points_frames: int = 8,
+        human_model_show_provisional: bool = False,
+        human_model_show_suspect: bool = False,
         ground_z: float = 0.0,
         human_model_target_height: float = 1.70,
         human_model_target_sitting_height: float = 1.20,
@@ -298,6 +337,20 @@ class TiStylePoseManager:
         self.stand_to_sit_margin = float(stand_to_sit_margin)
         self.stand_to_sit_frames = max(1, int(stand_to_sit_frames))
         self.stand_to_sit_allow_target_only = bool(stand_to_sit_allow_target_only)
+        self.sitting_relative_gate = bool(sitting_relative_gate)
+        self.sitting_relative_range_min_m = max(0.0, float(sitting_relative_range_min_m))
+        self.sitting_relative_min_prob = float(sitting_relative_min_prob)
+        self.sitting_relative_margin = float(sitting_relative_margin)
+        self.sitting_relative_frames = max(1, int(sitting_relative_frames))
+        self.sitting_relative_standing_veto_prob = float(
+            sitting_relative_standing_veto_prob
+        )
+        self.sitting_relative_standing_veto_margin = float(
+            sitting_relative_standing_veto_margin
+        )
+        self.moving_override_require_body_translation_for_sitting = bool(
+            moving_override_require_body_translation_for_sitting
+        )
         self.sit_to_stand_recovery_margin = float(sit_to_stand_recovery_margin)
         self.sit_to_stand_recovery_frames = max(1, int(sit_to_stand_recovery_frames))
         self.min_associated_points_for_inference = max(
@@ -314,6 +367,27 @@ class TiStylePoseManager:
         self.label_debug = bool(label_debug)
         self.enable_human_models = bool(enable_human_models)
         self.human_model_debug = bool(human_model_debug)
+        self.human_model_stale_frames = max(0, int(human_model_stale_frames))
+        self.human_model_ghost_distance_m = max(0.0, float(human_model_ghost_distance_m))
+        self.human_model_confirm_frames = max(1, int(human_model_confirm_frames))
+        self.human_model_confirm_min_geom_pts = max(
+            0, int(human_model_confirm_min_geom_pts)
+        )
+        self.human_model_confirm_min_quality_frames = max(
+            1, int(human_model_confirm_min_quality_frames)
+        )
+        self.human_model_confirmed_grace_frames = max(
+            0, int(human_model_confirmed_grace_frames)
+        )
+        self.human_model_bad_evidence_demote_frames = max(
+            0, int(human_model_bad_evidence_demote_frames)
+        )
+        self.human_model_ghost_min_bad_frames = max(1, int(human_model_ghost_min_bad_frames))
+        self.human_model_ghost_no_points_frames = max(
+            1, int(human_model_ghost_no_points_frames)
+        )
+        self.human_model_show_provisional = bool(human_model_show_provisional)
+        self.human_model_show_suspect = bool(human_model_show_suspect)
         self.ground_z = float(ground_z)
         self.human_model_target_height = float(human_model_target_height)
         self.human_model_target_sitting_height = float(human_model_target_sitting_height)
@@ -331,6 +405,7 @@ class TiStylePoseManager:
             *self.sit_to_stand_frames_by_zone.values(),
             *self.moving_override_frames_by_zone.values(),
             self.stand_to_sit_frames,
+            self.sitting_relative_frames,
             self.sit_to_stand_recovery_frames,
         )
         self.display_history = defaultdict(lambda: deque(maxlen=display_history_len))
@@ -340,10 +415,23 @@ class TiStylePoseManager:
         self.stand_to_sit_gate_history = defaultdict(
             lambda: deque(maxlen=self.stand_to_sit_frames)
         )
+        self.sitting_relative_gate_history = defaultdict(
+            lambda: deque(maxlen=self.sitting_relative_frames)
+        )
         self.sit_to_stand_recovery_history = defaultdict(
             lambda: deque(maxlen=self.sit_to_stand_recovery_frames)
         )
         self.display_state: dict[int, dict[str, Any]] = {}
+        self.human_model_validation: dict[int, dict[str, Any]] = {}
+        self._last_human_ui_summary: dict[str, Any] = {
+            "frame": 0,
+            "active": 0,
+            "confirmed": 0,
+            "provisional": 0,
+            "suspect": 0,
+            "rendered": 0,
+            "stale": 0,
+        }
         self.raw_label_history = defaultdict(lambda: deque(maxlen=display_history_len))
         self.confidence_history = defaultdict(lambda: deque(maxlen=display_history_len))
         self.probability_history = defaultdict(lambda: deque(maxlen=display_history_len))
@@ -592,6 +680,10 @@ class TiStylePoseManager:
                 "range_zone": range_zone,
                 "stand_prob": stand_sit["standing_prob"],
                 "sit_prob": stand_sit["sitting_prob"],
+                "sit_minus_stand_margin": display.get(
+                    "sit_minus_stand_margin",
+                    stand_sit["sitting_prob"] - stand_sit["standing_prob"],
+                ),
                 "stand_sit_margin": stand_sit["margin"],
                 "stand_sit_zone": stand_sit["range_zone"],
                 "stand_sit_decision": stand_sit["decision"],
@@ -602,7 +694,11 @@ class TiStylePoseManager:
                 "stand_sit_stable_count": display["stand_sit_stable_count"],
                 "moving_override_stable_count": display["moving_override_stable_count"],
                 "moving_override_required": display["moving_override_required"],
+                "moving_override_state": display.get("moving_override_state", "NONE"),
                 "moving_override_reason": display.get("moving_override_reason", ""),
+                "moving_override_blocked_by_body_still": display.get(
+                    "moving_override_blocked_by_body_still", False
+                ),
                 "moving_translation_displacement_m": display.get(
                     "moving_translation_displacement_m", 0.0
                 ),
@@ -619,6 +715,41 @@ class TiStylePoseManager:
                 "stand_to_sit_quality_ok": display.get(
                     "stand_to_sit_quality_ok", False
                 ),
+                "sitting_relative_gate_state": display.get(
+                    "sitting_relative_gate_state", "NA"
+                ),
+                "sitting_relative_gate_stable_count": display.get(
+                    "sitting_relative_gate_stable_count", 0
+                ),
+                "sitting_relative_gate_required_frames": display.get(
+                    "sitting_relative_gate_required_frames", self.sitting_relative_frames
+                ),
+                "sitting_relative_gate_passed": display.get(
+                    "sitting_relative_gate_passed", False
+                ),
+                "sitting_relative_gate_min_prob": display.get(
+                    "sitting_relative_gate_min_prob", self.sitting_relative_min_prob
+                ),
+                "sitting_relative_gate_margin": display.get(
+                    "sitting_relative_gate_margin", self.sitting_relative_margin
+                ),
+                "sitting_relative_gate_range_min_m": display.get(
+                    "sitting_relative_gate_range_min_m", self.sitting_relative_range_min_m
+                ),
+                "sitting_relative_gate_range_ok": display.get(
+                    "sitting_relative_gate_range_ok", False
+                ),
+                "sitting_relative_standing_veto_prob": display.get(
+                    "sitting_relative_standing_veto_prob",
+                    self.sitting_relative_standing_veto_prob,
+                ),
+                "sitting_relative_standing_veto_margin": display.get(
+                    "sitting_relative_standing_veto_margin",
+                    self.sitting_relative_standing_veto_margin,
+                ),
+                "sitting_relative_standing_veto_ok": display.get(
+                    "sitting_relative_standing_veto_ok", False
+                ),
                 "sit_to_stand_recovery_count": display.get(
                     "sit_to_stand_recovery_count", 0
                 ),
@@ -627,6 +758,7 @@ class TiStylePoseManager:
                 ),
                 "display_status": display["display_status"],
                 "transition_reason": display["transition_reason"],
+                "final_display_pose": display.get("final_display_pose", displayed_label),
                 "final_reason": display["transition_reason"],
                 "fall_gate_passed": fall_gate_passed,
                 "fall_gate_reason": fall_gate_reason,
@@ -687,6 +819,7 @@ class TiStylePoseManager:
             results[tid] = result
 
         self._reset_stale_tracks(frame_num, seen_tids)
+        self._update_human_model_validation(frame_num, results, seen_tids)
         self.latest_results = results
         self._write_log_rows(results)
         self._debug_print(frame_num, len(tracks), results)
@@ -709,6 +842,7 @@ class TiStylePoseManager:
         self.display_state.pop(tid_int, None)
         self.moving_override_history.pop(tid_int, None)
         self.stand_to_sit_gate_history.pop(tid_int, None)
+        self.sitting_relative_gate_history.pop(tid_int, None)
         self.sit_to_stand_recovery_history.pop(tid_int, None)
         self.raw_label_history.pop(tid_int, None)
         self.confidence_history.pop(tid_int, None)
@@ -717,6 +851,7 @@ class TiStylePoseManager:
         self.velocity_history.pop(tid_int, None)
         self.translation_history.pop(tid_int, None)
         self.standing_baseline.pop(tid_int, None)
+        self.human_model_validation.pop(tid_int, None)
 
     def reset_all(self) -> None:
         features.reset_all()
@@ -729,6 +864,7 @@ class TiStylePoseManager:
         self.display_state.clear()
         self.moving_override_history.clear()
         self.stand_to_sit_gate_history.clear()
+        self.sitting_relative_gate_history.clear()
         self.sit_to_stand_recovery_history.clear()
         self.raw_label_history.clear()
         self.confidence_history.clear()
@@ -737,6 +873,327 @@ class TiStylePoseManager:
         self.velocity_history.clear()
         self.translation_history.clear()
         self.standing_baseline.clear()
+        self.human_model_validation.clear()
+        self._last_human_ui_summary = {
+            "frame": 0,
+            "active": 0,
+            "confirmed": 0,
+            "provisional": 0,
+            "suspect": 0,
+            "rendered": 0,
+            "stale": 0,
+        }
+
+    def get_human_ui_debug_summary(self) -> dict[str, Any]:
+        return dict(self._last_human_ui_summary)
+
+    def _update_human_model_validation(
+        self,
+        frame_num: int,
+        results: dict[int, dict],
+        active_tids: set[int],
+    ) -> None:
+        if not self.enable_human_models:
+            return
+
+        frame_num = int(frame_num)
+        active_tids = {int(tid) for tid in active_tids}
+        for tid in sorted(active_tids):
+            pose = results.get(tid, {})
+            state = self.human_model_validation.get(tid)
+            if state is None:
+                state = self._new_human_model_validation_state(tid, frame_num)
+                self.human_model_validation[tid] = state
+                self._print_human_ui_transition(
+                    tid, "NEW_TO_PROVISIONAL", "new_tid"
+                )
+            elif state.get("state") == HUMAN_MODEL_STATE_LOST:
+                state["state"] = HUMAN_MODEL_STATE_PROVISIONAL
+                state["first_frame"] = frame_num
+                state["good_history"].clear()
+                state["bad_frames"] = 0
+                state["no_points_frames"] = 0
+                self._print_human_ui_transition(
+                    tid, "LOST_TO_PROVISIONAL", "tid_reappeared"
+                )
+
+            evidence = self._human_model_evidence(pose)
+            good = bool(evidence["good"])
+            bad = bool(evidence["bad"])
+            no_points = bool(evidence["no_points"])
+            state["last_frame"] = frame_num
+            state["stale_age"] = 0
+            state["good_history"].append(good)
+            if bad:
+                state["bad_frames"] = int(state.get("bad_frames", 0) or 0) + 1
+            else:
+                state["bad_frames"] = 0
+            if no_points:
+                state["no_points_frames"] = int(state.get("no_points_frames", 0) or 0) + 1
+            else:
+                state["no_points_frames"] = 0
+
+            previous_state = str(state.get("state", HUMAN_MODEL_STATE_PROVISIONAL))
+            persisted_frames = max(
+                1, frame_num - int(state.get("first_frame", frame_num)) + 1
+            )
+            good_frames = sum(1 for item in state["good_history"] if item)
+            reason = str(evidence["reason"])
+
+            can_confirm = (
+                persisted_frames >= self.human_model_confirm_frames
+                and good_frames >= self.human_model_confirm_min_quality_frames
+            )
+            if previous_state in {
+                HUMAN_MODEL_STATE_PROVISIONAL,
+                HUMAN_MODEL_STATE_SUSPECT,
+            } and can_confirm:
+                state["state"] = HUMAN_MODEL_STATE_CONFIRMED
+                state["bad_frames"] = 0
+                state["no_points_frames"] = 0
+                transition = (
+                    "PROVISIONAL_TO_CONFIRMED"
+                    if previous_state == HUMAN_MODEL_STATE_PROVISIONAL
+                    else "SUSPECT_GHOST_TO_CONFIRMED"
+                )
+                self._print_human_ui_transition(tid, transition, "good_evidence")
+                reason = "good_evidence"
+            elif (
+                previous_state == HUMAN_MODEL_STATE_PROVISIONAL
+                and (
+                    int(state.get("no_points_frames", 0) or 0)
+                    >= self.human_model_ghost_no_points_frames
+                    or int(state.get("bad_frames", 0) or 0)
+                    >= self.human_model_ghost_min_bad_frames
+                )
+            ):
+                state["state"] = HUMAN_MODEL_STATE_SUSPECT
+                if (
+                    int(state.get("no_points_frames", 0) or 0)
+                    >= self.human_model_ghost_no_points_frames
+                ):
+                    reason = "provisional_no_points_ghost"
+                else:
+                    reason = "provisional_bad_evidence_ghost"
+                self._print_human_ui_transition(
+                    tid, "PROVISIONAL_TO_SUSPECT_GHOST", reason
+                )
+            elif (
+                str(state.get("state")) == HUMAN_MODEL_STATE_CONFIRMED
+                and (bad or no_points)
+            ):
+                reason = "confirmed_retained_despite_low_evidence"
+
+            state["good_frames"] = int(good_frames)
+            state["reason"] = reason
+            state["rendered"] = self._human_model_should_render_state(
+                str(state.get("state"))
+            )
+            for key, value in evidence.items():
+                if key == "reason":
+                    continue
+                state[key] = value
+            if pose:
+                pose.update(self._human_model_validation_fields(state))
+
+        remove_validation_tids: list[int] = []
+        for tid, state in list(self.human_model_validation.items()):
+            if tid in active_tids:
+                continue
+            if state.get("state") != HUMAN_MODEL_STATE_LOST:
+                state["state"] = HUMAN_MODEL_STATE_LOST
+                state["rendered"] = False
+                state["reason"] = "not_active"
+            last_frame = int(state.get("last_frame", frame_num) or frame_num)
+            state["stale_age"] = max(0, frame_num - last_frame)
+            if state["stale_age"] >= self.human_model_stale_frames:
+                remove_validation_tids.append(tid)
+
+        self._update_human_ui_summary(frame_num)
+        self._print_human_ui_debug(frame_num)
+        for tid in remove_validation_tids:
+            self.human_model_validation.pop(tid, None)
+
+    def _new_human_model_validation_state(self, tid: int, frame_num: int) -> dict[str, Any]:
+        history_len = max(
+            self.human_model_confirm_frames,
+            self.human_model_confirm_min_quality_frames,
+            1,
+        )
+        return {
+            "tid": int(tid),
+            "state": HUMAN_MODEL_STATE_PROVISIONAL,
+            "first_frame": int(frame_num),
+            "last_frame": int(frame_num),
+            "good_history": deque(maxlen=history_len),
+            "good_frames": 0,
+            "bad_frames": 0,
+            "no_points_frames": 0,
+            "stale_age": 0,
+            "rendered": False,
+            "reason": "new_tid",
+        }
+
+    def _human_model_evidence(self, pose: dict[str, Any]) -> dict[str, Any]:
+        geom_pts = _int_value(pose.get("geom_pts", pose.get("num_points", 0)), 0)
+        quality = str(pose.get("quality", "UNKNOWN") or "UNKNOWN").upper()
+        geom_quality = str(pose.get("geom_quality", "UNKNOWN") or "UNKNOWN").upper()
+        assoc = str(
+            pose.get("assoc_mode", pose.get("assoc_method", "UNKNOWN")) or "UNKNOWN"
+        ).lower()
+        position_valid = self._human_model_position_valid(pose)
+        height_valid = self._human_model_height_valid(pose)
+        assoc_has_points = not (
+            assoc in {"auto_none", "unknown", ""}
+            or (assoc in {"target_index", "hybrid_target_index"} and geom_pts <= 0)
+        )
+        good = (
+            geom_pts >= self.human_model_confirm_min_geom_pts
+            and assoc_has_points
+            and quality not in HUMAN_MODEL_BAD_QUALITIES
+            and geom_quality != "TARGET_ONLY"
+            and position_valid
+            and height_valid
+        )
+        no_points = geom_pts <= 0 or quality == "NO_POINTS"
+        bad_reasons: list[str] = []
+        if geom_pts <= 0:
+            bad_reasons.append("geom_pts_0")
+        if quality in HUMAN_MODEL_WEAK_QUALITIES:
+            bad_reasons.append(f"quality_{quality.lower()}")
+        if geom_quality == "TARGET_ONLY":
+            bad_reasons.append("geom_target_only")
+        if assoc in {"auto_none", "unknown", ""}:
+            bad_reasons.append("assoc_auto_none")
+        if assoc in {"target_index", "hybrid_target_index"} and geom_pts <= 0:
+            bad_reasons.append("assoc_index_no_points")
+        if not position_valid:
+            bad_reasons.append("invalid_position")
+        if not height_valid:
+            bad_reasons.append("invalid_body_geometry")
+        return {
+            "good": good,
+            "bad": bool(bad_reasons),
+            "no_points": no_points,
+            "geom_pts": geom_pts,
+            "quality": quality,
+            "geom_quality": geom_quality,
+            "assoc": assoc,
+            "position_valid": position_valid,
+            "height_valid": height_valid,
+            "reason": "good_evidence" if good else ",".join(bad_reasons) or "weak_evidence",
+        }
+
+    def _human_model_position_valid(self, pose: dict[str, Any]) -> bool:
+        values = [
+            _optional_float(pose.get("x")),
+            _optional_float(pose.get("y")),
+            _optional_float(pose.get("z")),
+        ]
+        return all(value is not None and math.isfinite(value) for value in values)
+
+    def _human_model_height_valid(self, pose: dict[str, Any]) -> bool:
+        target_height = _optional_float(pose.get("target_height"))
+        geom_height = _optional_float(pose.get("geom_height"))
+        candidates = [
+            value for value in (target_height, geom_height) if value is not None and value > 0
+        ]
+        if not candidates:
+            return True
+        return max(candidates) >= 0.20
+
+    def _human_model_should_render_state(self, state: str) -> bool:
+        if state == HUMAN_MODEL_STATE_CONFIRMED:
+            return True
+        if state == HUMAN_MODEL_STATE_PROVISIONAL:
+            return self.human_model_show_provisional
+        if state == HUMAN_MODEL_STATE_SUSPECT:
+            return self.human_model_show_suspect
+        return False
+
+    def _human_model_validation_fields(self, state: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "human_model_validation_state": str(
+                state.get("state", HUMAN_MODEL_STATE_PROVISIONAL)
+            ),
+            "human_model_good_frames": int(state.get("good_frames", 0) or 0),
+            "human_model_bad_frames": int(state.get("bad_frames", 0) or 0),
+            "human_model_no_points_frames": int(
+                state.get("no_points_frames", 0) or 0
+            ),
+            "human_model_stale_age": int(state.get("stale_age", 0) or 0),
+            "human_model_rendered": bool(state.get("rendered", False)),
+            "human_model_reason": str(state.get("reason", "")),
+        }
+
+    def _update_human_ui_summary(self, frame_num: int, rendered: int | None = None) -> None:
+        states = [str(item.get("state", "")) for item in self.human_model_validation.values()]
+        active = sum(1 for state in states if state != HUMAN_MODEL_STATE_LOST)
+        confirmed = states.count(HUMAN_MODEL_STATE_CONFIRMED)
+        provisional = states.count(HUMAN_MODEL_STATE_PROVISIONAL)
+        suspect = states.count(HUMAN_MODEL_STATE_SUSPECT)
+        stale = states.count(HUMAN_MODEL_STATE_LOST)
+        if rendered is None:
+            rendered = sum(
+                1
+                for item in self.human_model_validation.values()
+                if item.get("state") != HUMAN_MODEL_STATE_LOST
+                and self._human_model_should_render_state(str(item.get("state")))
+            )
+        self._last_human_ui_summary = {
+            "frame": int(frame_num),
+            "active": int(active),
+            "active_tracks": int(active),
+            "confirmed": int(confirmed),
+            "provisional": int(provisional),
+            "suspect": int(suspect),
+            "rendered": int(rendered),
+            "stale": int(stale),
+        }
+
+    def _print_human_ui_transition(self, tid: int, transition: str, reason: str) -> None:
+        if not self.human_model_debug:
+            return
+        print(
+            f"[HUMAN_UI] tid={int(tid)} transition={transition} reason={reason}",
+            flush=True,
+        )
+
+    def _print_human_ui_debug(self, frame_num: int) -> None:
+        if not self.human_model_debug:
+            return
+        summary = self._last_human_ui_summary
+        print(
+            "[HUMAN_UI] frame={} active_tracks={} confirmed={} provisional={} suspect={} rendered={} stale={}".format(
+                frame_num,
+                summary.get("active", 0),
+                summary.get("confirmed", 0),
+                summary.get("provisional", 0),
+                summary.get("suspect", 0),
+                summary.get("rendered", 0),
+                summary.get("stale", 0),
+            ),
+            flush=True,
+        )
+        for tid in sorted(self.human_model_validation):
+            state = self.human_model_validation[tid]
+            print(
+                "[HUMAN_UI] tid={} state={} geom_pts={} quality={} geom_quality={} assoc={} good_frames={} bad_frames={} no_points_frames={} stale_age={} rendered={} reason={}".format(
+                    tid,
+                    state.get("state", HUMAN_MODEL_STATE_PROVISIONAL),
+                    state.get("geom_pts", 0),
+                    state.get("quality", "UNKNOWN"),
+                    state.get("geom_quality", "UNKNOWN"),
+                    state.get("assoc", "UNKNOWN"),
+                    state.get("good_frames", 0),
+                    state.get("bad_frames", 0),
+                    state.get("no_points_frames", 0),
+                    state.get("stale_age", 0),
+                    str(bool(state.get("rendered", False))).lower(),
+                    state.get("reason", ""),
+                ),
+                flush=True,
+            )
 
     def get_3d_label_records(self, track_data=None, height_data=None) -> list[dict]:
         if not self.enable_3d_labels:
@@ -753,6 +1210,12 @@ class TiStylePoseManager:
             confidence = float(
                 pose.get("displayed_confidence", pose.get("final_confidence", 0.0))
             )
+            validation_state = str(
+                pose.get("human_model_validation_state", HUMAN_MODEL_STATE_CONFIRMED)
+            )
+            if validation_state != HUMAN_MODEL_STATE_CONFIRMED:
+                final_label = validation_state or "UNKNOWN"
+                confidence = 0.0
 
             x, y, z = track_positions.get(
                 tid,
@@ -774,7 +1237,10 @@ class TiStylePoseManager:
             )
             z_label = self._label_z_for_pose(final_label, target_height)
             quality = str(pose.get("quality", "OK"))
-            text = self._format_3d_label(tid, pose, quality)
+            if validation_state != HUMAN_MODEL_STATE_CONFIRMED:
+                text = f"{tid} | {final_label}"
+            else:
+                text = self._format_3d_label(tid, pose, quality)
 
             records.append(
                 {
@@ -789,6 +1255,7 @@ class TiStylePoseManager:
                     "confidence": confidence,
                     "quality": quality,
                     "window_ready": window_ready,
+                    "human_model_validation_state": validation_state,
                 }
             )
         return records
@@ -803,6 +1270,11 @@ class TiStylePoseManager:
 
         for tid in sorted(self.latest_results):
             pose = self.latest_results[tid]
+            validation_state = str(
+                pose.get("human_model_validation_state", HUMAN_MODEL_STATE_PROVISIONAL)
+            )
+            if not self._human_model_should_render_state(validation_state):
+                continue
             x, y, z = track_positions.get(
                 tid,
                 (
@@ -818,6 +1290,9 @@ class TiStylePoseManager:
                 target_heights.get(tid, pose.get("target_height", 0.0)) or 0.0
             )
             displayed_label = str(pose.get("displayed_label", pose.get("final_label", "")))
+            render_label = displayed_label
+            if validation_state != HUMAN_MODEL_STATE_CONFIRMED:
+                render_label = "UNKNOWN"
 
             records.append(
                 {
@@ -829,8 +1304,12 @@ class TiStylePoseManager:
                     "ground_z": float(self.ground_z),
                     "height": float(target_height),
                     "target_height": float(target_height),
-                    "final_label": displayed_label,
-                    "displayed_label": displayed_label,
+                    "final_label": render_label,
+                    "displayed_label": (
+                        displayed_label
+                        if validation_state == HUMAN_MODEL_STATE_CONFIRMED
+                        else validation_state
+                    ),
                     "candidate_label": str(pose.get("candidate_label", "")),
                     "final_confidence": float(pose.get("displayed_confidence", 0.0)),
                     "displayed_confidence": float(pose.get("displayed_confidence", 0.0)),
@@ -840,10 +1319,32 @@ class TiStylePoseManager:
                     "quality": str(pose.get("quality", "OK")),
                     "window_ready": bool(pose.get("window_ready", False)),
                     "num_points": int(pose.get("num_points", 0) or 0),
-                    "model_asset_used": self._model_asset_for_label(displayed_label),
-                    "model_scale": self._model_scale_for_label(displayed_label),
+                    "model_asset_used": self._model_asset_for_label(render_label),
+                    "model_scale": self._model_scale_for_label(render_label),
+                    "frame": int(pose.get("frame", 0) or 0),
+                    "human_model_validation_state": validation_state,
+                    "human_model_good_frames": int(
+                        pose.get("human_model_good_frames", 0) or 0
+                    ),
+                    "human_model_bad_frames": int(
+                        pose.get("human_model_bad_frames", 0) or 0
+                    ),
+                    "human_model_no_points_frames": int(
+                        pose.get("human_model_no_points_frames", 0) or 0
+                    ),
+                    "human_model_stale_age": int(
+                        pose.get("human_model_stale_age", 0) or 0
+                    ),
+                    "human_model_reason": str(pose.get("human_model_reason", "")),
                 }
             )
+        frame = 0
+        if self.latest_results:
+            try:
+                frame = max(int(item.get("frame", 0) or 0) for item in self.latest_results.values())
+            except Exception:
+                frame = int(self._last_human_ui_summary.get("frame", 0) or 0)
+        self._update_human_ui_summary(frame, rendered=len(records))
         return records
 
     def _format_3d_label(self, tid: int, pose: dict, quality: str) -> str:
@@ -1741,6 +2242,7 @@ class TiStylePoseManager:
             self.display_state.pop(int(tid), None)
             self.moving_override_history.pop(int(tid), None)
             self.stand_to_sit_gate_history.pop(int(tid), None)
+            self.sitting_relative_gate_history.pop(int(tid), None)
             self.sit_to_stand_recovery_history.pop(int(tid), None)
             return {
                 "displayed_label": "WARMUP",
@@ -1810,9 +2312,19 @@ class TiStylePoseManager:
         stand_to_sit_count = 0
         stand_to_sit_required = self.stand_to_sit_frames
         stand_to_sit_quality_ok = False
+        sitting_relative_gate_state = "DISABLED" if not self.sitting_relative_gate else "NA"
+        sitting_relative_count = 0
+        sitting_relative_required = self.sitting_relative_frames
+        sitting_relative_passed = False
+        sitting_relative_evidence = False
+        sitting_relative_block_reason = ""
+        sitting_relative_range_ok = False
+        sitting_relative_standing_veto_ok = False
         sit_to_stand_recovery_count = 0
         sit_to_stand_recovery_required = self.sit_to_stand_recovery_frames
         sit_to_stand_recovery_forced = False
+        moving_override_state = "NONE"
+        moving_override_blocked_by_body_still = False
         translation = self._translation_evidence(
             tid=tid,
             target_position=target_position,
@@ -1830,6 +2342,71 @@ class TiStylePoseManager:
             stand_sit_decision in {"STANDING", "SITTING"}
             and stand_sit_margin >= strong_margin
         )
+        standing_prob = self._probability(
+            stand_sit.get("probabilities", {}), "STANDING"
+        )
+        sitting_prob = self._probability(stand_sit.get("probabilities", {}), "SITTING")
+        falling_prob = self._probability(
+            stand_sit.get("probabilities", {}), "FALLING"
+        )
+        lying_prob = self._probability(stand_sit.get("probabilities", {}), "LYING")
+        if not standing_prob and not sitting_prob:
+            standing_prob = float(stand_sit.get("standing_prob", 0.0) or 0.0)
+            sitting_prob = float(stand_sit.get("sitting_prob", 0.0) or 0.0)
+        sit_minus_stand_margin = float(sitting_prob) - float(standing_prob)
+        falling_lying_dominant = max(falling_prob, lying_prob) > max(
+            sitting_prob,
+            standing_prob,
+        )
+        try:
+            sitting_relative_range_ok = (
+                range_m is not None
+                and not math.isnan(float(range_m))
+                and float(range_m) >= self.sitting_relative_range_min_m
+            )
+        except (TypeError, ValueError):
+            sitting_relative_range_ok = False
+        sitting_relative_standing_veto_ok = bool(
+            standing_prob < self.sitting_relative_standing_veto_prob
+            and (standing_prob - sitting_prob)
+            < self.sitting_relative_standing_veto_margin
+        )
+        if self.sitting_relative_gate and prediction_exists and window_ready:
+            if translation["confirmed"]:
+                sitting_relative_block_reason = "sitting_relative_gate_blocked_by_body_motion"
+            elif falling_lying_dominant:
+                sitting_relative_block_reason = "sitting_relative_gate_blocked_fall_lying"
+            elif not sitting_relative_range_ok:
+                sitting_relative_block_reason = "sitting_relative_gate_blocked_range"
+            elif not sitting_relative_standing_veto_ok:
+                sitting_relative_block_reason = "sitting_relative_gate_blocked_standing_veto"
+            sitting_relative_evidence = bool(
+                sitting_relative_range_ok
+                and sitting_prob >= self.sitting_relative_min_prob
+                and sit_minus_stand_margin >= self.sitting_relative_margin
+                and sitting_relative_standing_veto_ok
+                and not translation["confirmed"]
+                and not falling_lying_dominant
+            )
+            relative_history = self.sitting_relative_gate_history[int(tid)]
+            relative_history.append(sitting_relative_evidence)
+            for value in reversed(relative_history):
+                if not value:
+                    break
+                sitting_relative_count += 1
+            if sitting_relative_evidence:
+                sitting_relative_gate_state = (
+                    "PASS"
+                    if sitting_relative_count >= sitting_relative_required
+                    else "WAIT"
+                )
+                sitting_relative_passed = sitting_relative_gate_state == "PASS"
+            elif sitting_relative_block_reason:
+                sitting_relative_gate_state = "BLOCK"
+            else:
+                sitting_relative_gate_state = "NA"
+        else:
+            self.sitting_relative_gate_history.pop(int(tid), None)
         in_stand_sit_context = (
             previous_label in {"STANDING", "SITTING"}
             or candidate in {"STANDING", "SITTING"}
@@ -1848,6 +2425,20 @@ class TiStylePoseManager:
                 moving_override_count += 1
             if motion_evidence and candidate == "MOVING" and previous_label in {"STANDING", "SITTING"}:
                 if (
+                    self.moving_override_require_body_translation_for_sitting
+                    and sitting_relative_passed
+                    and not translation["confirmed"]
+                ):
+                    candidate = "SITTING"
+                    confidence = max(
+                        confidence,
+                        sitting_prob,
+                        float(previous.get("confidence", confidence) or 0.0),
+                    )
+                    moving_override_reason = "moving_override_blocked_body_still_sitting"
+                    moving_override_state = "BLOCKED_BODY_STILL_SITTING"
+                    moving_override_blocked_by_body_still = True
+                elif (
                     strong_stand_sit
                     and self.moving_require_translation
                     and not translation["confirmed"]
@@ -1858,23 +2449,40 @@ class TiStylePoseManager:
                         float(previous.get("confidence", confidence) or 0.0),
                     )
                     moving_override_reason = "moving_override_speed_only_rejected"
+                    moving_override_state = "BLOCKED_STRONG_STAND_SIT"
                 elif moving_override_count >= moving_override_required:
                     moving_override_reason = (
                         "moving_override_translation_confirmed"
                         if translation["confirmed"]
                         else "moving_override_sustained"
                     )
+                    moving_override_state = (
+                        "TRANSLATION_CONFIRMED"
+                        if translation["confirmed"]
+                        else "SUSTAINED"
+                    )
                 else:
                     candidate = previous_label
                     confidence = float(previous.get("confidence", confidence) or 0.0)
                     moving_override_reason = "moving_override_waiting"
+                    moving_override_state = "WAITING"
             elif motion_evidence and candidate in {"STANDING", "SITTING"}:
                 if (
+                    self.moving_override_require_body_translation_for_sitting
+                    and candidate == "SITTING"
+                    and sitting_relative_passed
+                    and not translation["confirmed"]
+                ):
+                    moving_override_reason = "moving_override_blocked_body_still_sitting"
+                    moving_override_state = "BLOCKED_BODY_STILL_SITTING"
+                    moving_override_blocked_by_body_still = True
+                elif (
                     strong_stand_sit
                     and self.moving_require_translation
                     and not translation["confirmed"]
                 ):
                     moving_override_reason = "moving_override_blocked_by_strong_stand_sit"
+                    moving_override_state = "BLOCKED_STRONG_STAND_SIT"
                 elif moving_override_count >= moving_override_required:
                     candidate = "MOVING"
                     confidence = max(confidence, self.moving_min_confidence)
@@ -1883,18 +2491,16 @@ class TiStylePoseManager:
                         if translation["confirmed"]
                         else "moving_override_sustained"
                     )
+                    moving_override_state = (
+                        "TRANSLATION_CONFIRMED"
+                        if translation["confirmed"]
+                        else "SUSTAINED"
+                    )
                 else:
                     moving_override_reason = "moving_override_waiting"
+                    moving_override_state = "WAITING"
         else:
             self.moving_override_history.pop(int(tid), None)
-
-        standing_prob = self._probability(
-            stand_sit.get("probabilities", {}), "STANDING"
-        )
-        sitting_prob = self._probability(stand_sit.get("probabilities", {}), "SITTING")
-        if not standing_prob and not sitting_prob:
-            standing_prob = float(stand_sit.get("standing_prob", 0.0) or 0.0)
-            sitting_prob = float(stand_sit.get("sitting_prob", 0.0) or 0.0)
 
         if previous_label == "SITTING":
             recovery_margin = standing_prob - sitting_prob
@@ -1924,6 +2530,15 @@ class TiStylePoseManager:
         else:
             self.sit_to_stand_recovery_history.pop(int(tid), None)
 
+        if (
+            previous_label == "STANDING"
+            and candidate == "STANDING"
+            and sitting_relative_passed
+        ):
+            candidate = "SITTING"
+            confidence = max(confidence, sitting_prob)
+            moving_override_reason = "sitting_relative_gate"
+
         if previous_label == "STANDING" and candidate == "SITTING":
             blocked_quality_values = {"NO_POINTS", "TARGET_ONLY", "NO_ASSOC_POINTS"}
             observed_quality = {
@@ -1945,7 +2560,34 @@ class TiStylePoseManager:
                 if not value:
                     break
                 stand_to_sit_count += 1
-            if not stand_to_sit_quality_ok:
+            relative_override = bool(
+                self.sitting_relative_gate and sitting_relative_passed
+            )
+            relative_waiting = bool(
+                self.sitting_relative_gate
+                and sitting_relative_evidence
+                and not sitting_relative_passed
+            )
+            relative_blocked = bool(
+                self.sitting_relative_gate
+                and sitting_relative_gate_state == "BLOCK"
+                and sitting_relative_block_reason
+            )
+            if relative_override:
+                stand_to_sit_gate = "RELATIVE_PASS"
+                moving_override_reason = "sitting_relative_gate"
+                confidence = max(confidence, sitting_prob)
+            elif relative_waiting:
+                stand_to_sit_gate = "WAIT"
+                moving_override_reason = "sitting_relative_gate_waiting"
+                candidate = previous_label
+                confidence = float(previous.get("confidence", confidence) or 0.0)
+            elif relative_blocked:
+                stand_to_sit_gate = "BLOCK"
+                moving_override_reason = sitting_relative_block_reason
+                candidate = previous_label
+                confidence = float(previous.get("confidence", confidence) or 0.0)
+            elif not stand_to_sit_quality_ok:
                 stand_to_sit_gate = "BLOCK"
                 moving_override_reason = "stand_to_sit_blocked_target_only"
                 candidate = previous_label
@@ -2005,6 +2647,11 @@ class TiStylePoseManager:
             count = stand_to_sit_count
             enough_samples = stand_to_sit_count >= required
             min_confidence = 0.0
+        if sitting_relative_passed and candidate == "SITTING":
+            required = sitting_relative_required
+            count = sitting_relative_count
+            enough_samples = sitting_relative_count >= required
+            min_confidence = 0.0
         if sit_to_stand_recovery_forced and candidate == "STANDING":
             required = sit_to_stand_recovery_required
             count = sit_to_stand_recovery_count
@@ -2045,6 +2692,8 @@ class TiStylePoseManager:
                 transition_reason = moving_override_reason
             elif stand_to_sit_gate == "PASS" and candidate == "SITTING":
                 transition_reason = "stand_to_sit_gate_passed"
+            elif sitting_relative_passed and candidate == "SITTING":
+                transition_reason = "sitting_relative_gate"
             elif sit_to_stand_recovery_forced and candidate == "STANDING":
                 transition_reason = "sit_to_stand_recovery"
             elif stand_to_sit_gate in {"BLOCK", "WAIT"}:
@@ -2065,7 +2714,13 @@ class TiStylePoseManager:
             if moving_override_reason in {
                 "moving_override_waiting",
                 "moving_override_blocked_by_strong_stand_sit",
+                "moving_override_blocked_body_still_sitting",
                 "moving_override_speed_only_rejected",
+                "sitting_relative_gate_waiting",
+                "sitting_relative_gate_blocked_by_body_motion",
+                "sitting_relative_gate_blocked_fall_lying",
+                "sitting_relative_gate_blocked_range",
+                "sitting_relative_gate_blocked_standing_veto",
                 "stand_to_sit_blocked_target_only",
                 "stand_to_sit_blocked_margin",
                 "stand_to_sit_blocked_confidence",
@@ -2087,7 +2742,13 @@ class TiStylePoseManager:
             if moving_override_reason in {
                 "moving_override_waiting",
                 "moving_override_blocked_by_strong_stand_sit",
+                "moving_override_blocked_body_still_sitting",
                 "moving_override_speed_only_rejected",
+                "sitting_relative_gate_waiting",
+                "sitting_relative_gate_blocked_by_body_motion",
+                "sitting_relative_gate_blocked_fall_lying",
+                "sitting_relative_gate_blocked_range",
+                "sitting_relative_gate_blocked_standing_veto",
                 "stand_to_sit_blocked_target_only",
                 "stand_to_sit_blocked_margin",
                 "stand_to_sit_blocked_confidence",
@@ -2126,9 +2787,12 @@ class TiStylePoseManager:
             "pose_required_frames": required,
             "stand_sit_required_frames": stand_sit_required,
             "stand_sit_stable_count": count if stand_sit_active and candidate in {"STANDING", "SITTING"} else 0,
+            "sit_minus_stand_margin": sit_minus_stand_margin,
             "moving_override_stable_count": moving_override_count,
             "moving_override_required": moving_override_required,
+            "moving_override_state": moving_override_state,
             "moving_override_reason": moving_override_reason,
+            "moving_override_blocked_by_body_still": moving_override_blocked_by_body_still,
             "moving_translation_displacement_m": translation["displacement_m"],
             "moving_translation_confirmed": translation["confirmed"],
             "strong_stand_sit": strong_stand_sit,
@@ -2139,8 +2803,20 @@ class TiStylePoseManager:
             "stand_to_sit_stable_count": stand_to_sit_count,
             "stand_to_sit_required": stand_to_sit_required,
             "stand_to_sit_quality_ok": stand_to_sit_quality_ok,
+            "sitting_relative_gate_state": sitting_relative_gate_state,
+            "sitting_relative_gate_stable_count": sitting_relative_count,
+            "sitting_relative_gate_required_frames": sitting_relative_required,
+            "sitting_relative_gate_passed": sitting_relative_passed,
+            "sitting_relative_gate_min_prob": self.sitting_relative_min_prob,
+            "sitting_relative_gate_margin": self.sitting_relative_margin,
+            "sitting_relative_gate_range_min_m": self.sitting_relative_range_min_m,
+            "sitting_relative_gate_range_ok": sitting_relative_range_ok,
+            "sitting_relative_standing_veto_prob": self.sitting_relative_standing_veto_prob,
+            "sitting_relative_standing_veto_margin": self.sitting_relative_standing_veto_margin,
+            "sitting_relative_standing_veto_ok": sitting_relative_standing_veto_ok,
             "sit_to_stand_recovery_count": sit_to_stand_recovery_count,
             "sit_to_stand_recovery_required": sit_to_stand_recovery_required,
+            "final_display_pose": displayed_label,
             "display_status": status,
             "transition_reason": transition_reason,
         }
@@ -2315,6 +2991,7 @@ class TiStylePoseManager:
                 f"pose_required_frames={item.get('pose_required_frames', item.get('display_stability_required', self.display_stability_frames))} "
                 f"stand_prob={item.get('stand_prob', 0.0):.2f} "
                 f"sit_prob={item.get('sit_prob', 0.0):.2f} "
+                f"sit_minus_stand={item.get('sit_minus_stand_margin', 0.0):.2f} "
                 f"stand_sit_margin={item.get('stand_sit_margin', 0.0):.2f} "
                 f"stand_sit_zone={item.get('stand_sit_zone', item.get('range_zone', 'unknown'))} "
                 f"stand_sit_decision={item.get('stand_sit_decision', 'NA')} "
@@ -2323,7 +3000,9 @@ class TiStylePoseManager:
                 f"{item.get('stand_sit_required_frames', 0)} "
                 f"moving_override_stable={item.get('moving_override_stable_count', 0)}/"
                 f"{item.get('moving_override_required', 0)} "
+                f"moving_override_state={item.get('moving_override_state', 'NONE')} "
                 f"moving_override_reason={item.get('moving_override_reason', '')} "
+                f"moving_blocked_body_still={item.get('moving_override_blocked_by_body_still', False)} "
                 f"translation_m={_fmt_float(item.get('moving_translation_displacement_m'))} "
                 f"translation_confirmed={item.get('moving_translation_confirmed', False)} "
                 f"stand_to_sit_gate={item.get('stand_to_sit_gate', 'NA')} "
@@ -2332,6 +3011,12 @@ class TiStylePoseManager:
                 f"stand_to_sit_stable={item.get('stand_to_sit_stable_count', 0)}/"
                 f"{item.get('stand_to_sit_required', 0)} "
                 f"stand_to_sit_quality_ok={item.get('stand_to_sit_quality_ok', False)} "
+                f"sitting_relative_gate={item.get('sitting_relative_gate_state', 'NA')} "
+                f"sitting_relative_stable={item.get('sitting_relative_gate_stable_count', 0)}/"
+                f"{item.get('sitting_relative_gate_required_frames', 0)} "
+                f"sitting_relative_passed={item.get('sitting_relative_gate_passed', False)} "
+                f"sitting_relative_range_ok={item.get('sitting_relative_gate_range_ok', False)} "
+                f"sitting_relative_veto_ok={item.get('sitting_relative_standing_veto_ok', False)} "
                 f"sit_to_stand_recovery={item.get('sit_to_stand_recovery_count', 0)}/"
                 f"{item.get('sit_to_stand_recovery_required', 0)} "
                 f"range_m={range_text} "
@@ -2427,6 +3112,7 @@ class TiStylePoseManager:
             "pose_required_frames",
             "stand_prob",
             "sit_prob",
+            "sit_minus_stand_margin",
             "stand_sit_margin",
             "stand_sit_zone",
             "stand_sit_decision",
@@ -2437,7 +3123,9 @@ class TiStylePoseManager:
             "stand_sit_stable_count",
             "moving_override_stable_count",
             "moving_override_required",
+            "moving_override_state",
             "moving_override_reason",
+            "moving_override_blocked_by_body_still",
             "moving_translation_displacement_m",
             "moving_translation_confirmed",
             "stand_to_sit_gate",
@@ -2446,6 +3134,17 @@ class TiStylePoseManager:
             "stand_to_sit_stable_count",
             "stand_to_sit_required",
             "stand_to_sit_quality_ok",
+            "sitting_relative_gate_state",
+            "sitting_relative_gate_stable_count",
+            "sitting_relative_gate_required_frames",
+            "sitting_relative_gate_passed",
+            "sitting_relative_gate_min_prob",
+            "sitting_relative_gate_margin",
+            "sitting_relative_gate_range_min_m",
+            "sitting_relative_gate_range_ok",
+            "sitting_relative_standing_veto_prob",
+            "sitting_relative_standing_veto_margin",
+            "sitting_relative_standing_veto_ok",
             "sit_to_stand_recovery_count",
             "sit_to_stand_recovery_required",
             "baseline_ready",
@@ -2460,6 +3159,7 @@ class TiStylePoseManager:
             "geometry_range_threshold",
             "display_status",
             "transition_reason",
+            "final_display_pose",
             "fall_gate_passed",
             "fall_gate_reason",
             "sitting_gate_passed",
@@ -2558,12 +3258,41 @@ class TiStylePoseManager:
             "stand_to_sit_margin": self.stand_to_sit_margin,
             "stand_to_sit_frames": self.stand_to_sit_frames,
             "stand_to_sit_allow_target_only": self.stand_to_sit_allow_target_only,
+            "sitting_relative_gate": self.sitting_relative_gate,
+            "sitting_relative_range_min_m": self.sitting_relative_range_min_m,
+            "sitting_relative_min_prob": self.sitting_relative_min_prob,
+            "sitting_relative_margin": self.sitting_relative_margin,
+            "sitting_relative_frames": self.sitting_relative_frames,
+            "sitting_relative_standing_veto_prob": self.sitting_relative_standing_veto_prob,
+            "sitting_relative_standing_veto_margin": self.sitting_relative_standing_veto_margin,
+            "moving_override_require_body_translation_for_sitting": (
+                self.moving_override_require_body_translation_for_sitting
+            ),
             "sit_to_stand_recovery_margin": self.sit_to_stand_recovery_margin,
             "sit_to_stand_recovery_frames": self.sit_to_stand_recovery_frames,
             "ground_z": self.ground_z,
             "human_model_target_height": self.human_model_target_height,
             "human_model_target_sitting_height": self.human_model_target_sitting_height,
             "human_model_target_lying_length": self.human_model_target_lying_length,
+            "human_model_stale_frames": self.human_model_stale_frames,
+            "human_model_ghost_distance_m": self.human_model_ghost_distance_m,
+            "human_model_confirm_frames": self.human_model_confirm_frames,
+            "human_model_confirm_min_geom_pts": self.human_model_confirm_min_geom_pts,
+            "human_model_confirm_min_quality_frames": (
+                self.human_model_confirm_min_quality_frames
+            ),
+            "human_model_confirmed_grace_frames": (
+                self.human_model_confirmed_grace_frames
+            ),
+            "human_model_bad_evidence_demote_frames": (
+                self.human_model_bad_evidence_demote_frames
+            ),
+            "human_model_ghost_min_bad_frames": self.human_model_ghost_min_bad_frames,
+            "human_model_ghost_no_points_frames": (
+                self.human_model_ghost_no_points_frames
+            ),
+            "human_model_show_provisional": self.human_model_show_provisional,
+            "human_model_show_suspect": self.human_model_show_suspect,
             "normalization_enabled": bool(getattr(self.model, "normalization_enabled", False)),
             "scaler_path": str(getattr(self.model, "scaler_path", "") or ""),
             "date_time": datetime.now().isoformat(timespec="seconds"),
@@ -2642,6 +3371,7 @@ class TiStylePoseManager:
                     "pose_required_frames": item.get("pose_required_frames", item.get("display_stability_required", self.display_stability_frames)),
                     "stand_prob": item.get("stand_prob", 0.0),
                     "sit_prob": item.get("sit_prob", 0.0),
+                    "sit_minus_stand_margin": item.get("sit_minus_stand_margin", 0.0),
                     "stand_sit_margin": item.get("stand_sit_margin", 0.0),
                     "stand_sit_zone": item.get("stand_sit_zone", item.get("range_zone", "")),
                     "stand_sit_decision": item.get("stand_sit_decision", "NA"),
@@ -2652,7 +3382,9 @@ class TiStylePoseManager:
                     "stand_sit_stable_count": item.get("stand_sit_stable_count", 0),
                     "moving_override_stable_count": item.get("moving_override_stable_count", 0),
                     "moving_override_required": item.get("moving_override_required", 0),
+                    "moving_override_state": item.get("moving_override_state", "NONE"),
                     "moving_override_reason": item.get("moving_override_reason", ""),
+                    "moving_override_blocked_by_body_still": item.get("moving_override_blocked_by_body_still", False),
                     "moving_translation_displacement_m": item.get("moving_translation_displacement_m", 0.0),
                     "moving_translation_confirmed": item.get("moving_translation_confirmed", False),
                     "stand_to_sit_gate": item.get("stand_to_sit_gate", "NA"),
@@ -2661,6 +3393,17 @@ class TiStylePoseManager:
                     "stand_to_sit_stable_count": item.get("stand_to_sit_stable_count", 0),
                     "stand_to_sit_required": item.get("stand_to_sit_required", 0),
                     "stand_to_sit_quality_ok": item.get("stand_to_sit_quality_ok", False),
+                    "sitting_relative_gate_state": item.get("sitting_relative_gate_state", "NA"),
+                    "sitting_relative_gate_stable_count": item.get("sitting_relative_gate_stable_count", 0),
+                    "sitting_relative_gate_required_frames": item.get("sitting_relative_gate_required_frames", self.sitting_relative_frames),
+                    "sitting_relative_gate_passed": item.get("sitting_relative_gate_passed", False),
+                    "sitting_relative_gate_min_prob": item.get("sitting_relative_gate_min_prob", self.sitting_relative_min_prob),
+                    "sitting_relative_gate_margin": item.get("sitting_relative_gate_margin", self.sitting_relative_margin),
+                    "sitting_relative_gate_range_min_m": item.get("sitting_relative_gate_range_min_m", self.sitting_relative_range_min_m),
+                    "sitting_relative_gate_range_ok": item.get("sitting_relative_gate_range_ok", False),
+                    "sitting_relative_standing_veto_prob": item.get("sitting_relative_standing_veto_prob", self.sitting_relative_standing_veto_prob),
+                    "sitting_relative_standing_veto_margin": item.get("sitting_relative_standing_veto_margin", self.sitting_relative_standing_veto_margin),
+                    "sitting_relative_standing_veto_ok": item.get("sitting_relative_standing_veto_ok", False),
                     "sit_to_stand_recovery_count": item.get("sit_to_stand_recovery_count", 0),
                     "sit_to_stand_recovery_required": item.get("sit_to_stand_recovery_required", self.sit_to_stand_recovery_frames),
                     "baseline_ready": item.get("baseline_ready", False),
@@ -2675,6 +3418,7 @@ class TiStylePoseManager:
                     "geometry_range_threshold": item.get("geometry_range_threshold", 0.0),
                     "display_status": item.get("display_status", ""),
                     "transition_reason": item.get("transition_reason", ""),
+                    "final_display_pose": item.get("final_display_pose", item.get("displayed_label", item.get("final_label", ""))),
                     "fall_gate_passed": item.get("fall_gate_passed", False),
                     "fall_gate_reason": item.get("fall_gate_reason", ""),
                     "sitting_gate_passed": item.get("sitting_gate_passed", False),

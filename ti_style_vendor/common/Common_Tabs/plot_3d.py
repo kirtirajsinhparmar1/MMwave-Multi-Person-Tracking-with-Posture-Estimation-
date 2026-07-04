@@ -95,23 +95,33 @@ class Plot3D():
         self.humanModelMode = mode or 'overlay_box'
         self.humanModelsFailed = False
 
-    def updateHumanPoseModels(self, model_records):
+    def updateHumanPoseModels(self, model_records, current_frame=None, active_tids=None):
         if self.humanModelRenderer is None or self.humanModelsFailed:
             return
         try:
-            self.humanModelRenderer.update_models(model_records or [])
+            self.humanModelRenderer.update_models(
+                model_records or [],
+                current_frame=current_frame,
+                active_tids=active_tids,
+            )
         except Exception as exc:
             self.humanModelsFailed = True
             log.warning("Human pose models disabled after update failure: %s", exc)
             try:
-                self.humanModelRenderer.clear()
+                if hasattr(self.humanModelRenderer, "clear_all_human_models"):
+                    self.humanModelRenderer.clear_all_human_models()
+                else:
+                    self.humanModelRenderer.clear()
             except Exception:
                 pass
 
     def clearHumanPoseModels(self):
         if self.humanModelRenderer is not None:
             try:
-                self.humanModelRenderer.clear()
+                if hasattr(self.humanModelRenderer, "clear_all_human_models"):
+                    self.humanModelRenderer.clear_all_human_models()
+                else:
+                    self.humanModelRenderer.clear()
             except Exception:
                 pass
 

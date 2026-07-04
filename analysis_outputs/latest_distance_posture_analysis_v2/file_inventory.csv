@@ -1,0 +1,18 @@
+file,exists,rows,columns,time/frame column detected,notes
+mmwave_frames.csv,True,10059,"session_id, host_wall_time_iso, host_monotonic_ns, source, mmwave_frame_num, num_tracks, num_points, parse_ok, error_count","host_wall_time_iso, host_monotonic_ns, mmwave_frame_num",
+mmwave_tracks.csv,True,9204,"session_id, host_wall_time_iso, host_monotonic_ns, source, mmwave_frame_num, tid, x_m, y_m, z_m, vx_mps, vy_mps, vz_mps, ax_mps2, ay_mps2, az_mps2, confidence, g, num_associated_points, height_min_z_m, height_max_z_m, height_m","host_wall_time_iso, host_monotonic_ns, mmwave_frame_num",
+mmwave_pose.csv,True,9204,"session_id, host_wall_time_iso, host_monotonic_ns, source, mmwave_frame_num, tid, window_ready, ml_label, ml_confidence, final_label, motion_label, speed_mps, height_drop_flag, quality_flag, num_points, prob_standing, prob_sitting, prob_lying, prob_falling","host_wall_time_iso, host_monotonic_ns, mmwave_frame_num",
+pose_predictions_ui.csv,False,NA,,,
+pose_ui_metadata.json,False,NA,,,
+targets.csv,False,NA,,,
+frames_summary.csv,False,NA,,,
+rgb_frames.csv,True,2100,"session_id, host_wall_time_iso, host_monotonic_ns, source, rgb_frame_num, width, height, fps_estimate, frame_read_ok, num_detections, num_tracks, num_actions, error_count","host_wall_time_iso, host_monotonic_ns, rgb_frame_num, frame_read_ok",
+rgb_tracks.csv,True,4333,"session_id, host_wall_time_iso, host_monotonic_ns, source, rgb_frame_num, rgb_track_id, bbox_x1_px, bbox_y1_px, bbox_x2_px, bbox_y2_px, bbox_confidence, pose_confidence, tracker_state, track_age, time_since_update, action_window_ready, action_label, action_confidence","host_wall_time_iso, host_monotonic_ns, rgb_frame_num, time_since_update",
+rgb_keypoints.csv,True,56329,"session_id, host_wall_time_iso, host_monotonic_ns, source, rgb_frame_num, rgb_track_id, joint_index, x_px, y_px, score, x_norm, y_norm","host_wall_time_iso, host_monotonic_ns, rgb_frame_num",
+sync_index.csv,True,12159,"session_id, host_wall_time_iso, host_monotonic_ns, source, source_type, source_frame_num, latest_mmwave_frame_num, latest_mmwave_monotonic_ns, latest_rgb_frame_num, latest_rgb_monotonic_ns, delta_ms_if_both_available","host_wall_time_iso, host_monotonic_ns, source_frame_num, latest_mmwave_frame_num, latest_mmwave_monotonic_ns, latest_rgb_frame_num",
+events.csv,False,NA,,,
+events.jsonl,True,9,,,3265 bytes
+session_metadata.json,True,NA,,,2330 bytes
+combined_events.csv,False,NA,,,
+rgb_annotated.mp4,True,NA,,,29958555 bytes
+rgb_actions.csv,True,0,"session_id, host_wall_time_iso, host_monotonic_ns, source, rgb_frame_num, rgb_track_id, action_window_ready, action_label, action_confidence, prob_standing, prob_walking, prob_sitting, prob_lying_down, prob_stand_up, prob_sit_down, prob_fall_down","host_wall_time_iso, host_monotonic_ns, rgb_frame_num",extra discovered file

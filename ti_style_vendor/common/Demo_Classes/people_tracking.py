@@ -202,11 +202,15 @@ class PeopleTracking(Plot3D, Plot1D):
                                 self.coordStr[tid].setVisible(True)
                                 break
                 self.updatePose3DLabels(tracks, outputDict.get('heightData'))
-                self.updatePoseHumanModels(tracks, outputDict.get('heightData'))
+                self.updatePoseHumanModels(
+                    tracks,
+                    outputDict.get('heightData'),
+                    outputDict.get('frameNum'),
+                )
             else:
                 tracks = None
                 self.updatePose3DLabels([], None)
-                self.updatePoseHumanModels([], None)
+                self.updatePoseHumanModels([], None, outputDict.get('frameNum'))
             if (self.plotComplete):
                 self.plotStart = int(round(time.time()*1000))
                 self.plot_3d_thread = updateQTTargetThread3D(self.cumulativeCloud, tracks, self.scatter, self.plot_3d, 0, self.ellipsoids, "", colorGradient=self.colorGradient, pointColorMode=self.pointColorMode.currentText(), trackColorMap=self.trackColorMap)
@@ -316,7 +320,7 @@ class PeopleTracking(Plot3D, Plot1D):
             log.exception("Failed to update 3D pose labels")
             self.updatePoseLabels([])
 
-    def updatePoseHumanModels(self, tracks, heightData):
+    def updatePoseHumanModels(self, tracks, heightData, frameNum=None):
         if not self.poseHumanModelsEnabled or self.poseManager is None:
             self.clearHumanPoseModels()
             return
@@ -325,7 +329,11 @@ class PeopleTracking(Plot3D, Plot1D):
                 track_data=tracks,
                 height_data=heightData,
             )
-            self.updateHumanPoseModels(model_records)
+            self.updateHumanPoseModels(
+                model_records,
+                current_frame=frameNum,
+                active_tids=self._activeTidsFromTracks(tracks),
+            )
             if self.poseHumanModelMode in ('replace_box', 'model_only'):
                 self.setTargetBoxesVisible(False)
             elif self.poseHumanModelMode == 'overlay_box':
@@ -334,6 +342,18 @@ class PeopleTracking(Plot3D, Plot1D):
             log.exception("Failed to update human pose models")
             self.clearHumanPoseModels()
             self.setTargetBoxesVisible(True)
+
+    def _activeTidsFromTracks(self, tracks):
+        active_tids = set()
+        if tracks is None:
+            return active_tids
+        try:
+            for track in tracks:
+                if len(track) > 0:
+                    active_tids.add(int(track[0]))
+        except Exception:
+            pass
+        return active_tids
 
     def initPosePane(self):
         poseBox = QGroupBox('Live Posture / Pose')
@@ -378,17 +398,18 @@ class PeopleTracking(Plot3D, Plot1D):
             self.poseTable.setRowCount(0)
             return
         if not poseResults:
-            self.poseStatus.setText('Pose model enabled: waiting for tracks')
+            self.poseStatus.setText('Pose model enabled: waiting for tracks' + self._humanUiStatusText())
             self.poseTable.setRowCount(0)
             return
 
         tids = sorted(poseResults.keys())
-        self.poseStatus.setText('Pose model enabled')
+        self.poseStatus.setText('Pose model enabled' + self._humanUiStatusText())
         self.poseTable.setRowCount(len(tids))
         for row, tid in enumerate(tids):
             pose = poseResults[tid]
             window_age = int(pose.get('window_age', 0))
             ready = bool(pose.get('window_ready', False))
+            validation_state = str(pose.get('human_model_validation_state', 'CONFIRMED'))
             if ready:
                 displayed_label = str(pose.get('displayed_label', pose.get('final_label', '')))
                 candidate_label = str(pose.get('candidate_label', pose.get('smoothed_label', '')))
@@ -400,6 +421,10 @@ class PeopleTracking(Plot3D, Plot1D):
                 displayed_label = 'WARMUP'
                 candidate_label = 'warmup {}/8'.format(window_age)
                 ml_top_label = '-'
+                confidence = '-'
+            if validation_state and validation_state != 'CONFIRMED':
+                displayed_label = validation_state
+                candidate_label = str(pose.get('human_model_reason', validation_state))
                 confidence = '-'
 
             quality = str(pose.get('quality', 'OK'))
@@ -437,6 +462,34 @@ class PeopleTracking(Plot3D, Plot1D):
             ]
             for column, value in enumerate(values):
                 self.poseTable.setItem(row, column, QTableWidgetItem(value))
+
+    def _humanUiStatusText(self):
+        manager = getattr(self, 'poseManager', None)
+        if manager is not None and hasattr(manager, 'get_human_ui_debug_summary'):
+            try:
+                summary = manager.get_human_ui_debug_summary()
+                return ' | Human UI: active={}, confirmed={}, provisional={}, suspect={}, rendered={}, stale={}'.format(
+                    summary.get('active', summary.get('active_tracks', 0)),
+                    summary.get('confirmed', 0),
+                    summary.get('provisional', 0),
+                    summary.get('suspect', 0),
+                    summary.get('rendered', 0),
+                    summary.get('stale', 0),
+                )
+            except Exception:
+                pass
+        renderer = getattr(self, 'humanModelRenderer', None)
+        if renderer is None or not hasattr(renderer, 'get_debug_summary'):
+            return ''
+        try:
+            summary = renderer.get_debug_summary()
+            return ' | Human UI: active_tracks={}, rendered={}, stale={}'.format(
+                summary.get('active_tracks', 0),
+                summary.get('renderer_items', 0),
+                len(summary.get('stale_tids', []) or []),
+            )
+        except Exception:
+            return ''
 
     def initPlotControlPane(self):
         plotControlBox = QGroupBox('Plot Controls')

@@ -107,6 +107,22 @@ def parse_args() -> argparse.Namespace:
         help="OpenCV VideoCapture backend for camera sources.",
     )
     parser.add_argument(
+        "--rgb-list-cameras",
+        action="store_true",
+        help="Probe RGB camera indices, print available cameras, and exit when used without the RGB UI.",
+    )
+    parser.add_argument(
+        "--rgb-camera-probe-max-index",
+        type=int,
+        default=10,
+        help="Highest OpenCV camera index to probe for --rgb-list-cameras or --rgb-prefer-external.",
+    )
+    parser.add_argument(
+        "--rgb-prefer-external",
+        action="store_true",
+        help="Prefer the first available RGB camera index greater than 0; fall back to --rgb-source.",
+    )
+    parser.add_argument(
         "--rgb-width",
         type=int,
         default=640,
@@ -214,6 +230,36 @@ def parse_args() -> argparse.Namespace:
         "--rgb-log-frames",
         action="store_true",
         help="Create an RGB annotated frame folder; image saving is not implemented yet.",
+    )
+    parser.add_argument(
+        "--rgb-record-video",
+        action="store_true",
+        help="Record the already-annotated RGB panel frames to a video file.",
+    )
+    parser.add_argument(
+        "--rgb-video-output",
+        default="",
+        help=(
+            "Optional output path for --rgb-record-video. Defaults to the combined "
+            "session videos folder or logs/rgb_annotated_<timestamp>.mp4."
+        ),
+    )
+    parser.add_argument(
+        "--rgb-video-fps",
+        type=float,
+        default=0,
+        help="Video FPS for --rgb-record-video. Use 0 for source FPS or 20 FPS fallback.",
+    )
+    parser.add_argument(
+        "--rgb-video-codec",
+        default="mp4v",
+        help="OpenCV fourcc codec for --rgb-record-video. Defaults to mp4v.",
+    )
+    parser.add_argument(
+        "--rgb-video-max-queue",
+        type=int,
+        default=120,
+        help="Maximum queued annotated RGB frames before video frames are dropped.",
     )
     parser.add_argument(
         "--mmwave-log-points",
@@ -394,6 +440,73 @@ def parse_args() -> argparse.Namespace:
         help="Print per-frame human model placement details.",
     )
     parser.add_argument(
+        "--pose-human-model-stale-frames",
+        type=int,
+        default=10,
+        help="Frames to keep a missing human model TID before removing its GL item.",
+    )
+    parser.add_argument(
+        "--pose-human-model-ghost-distance-m",
+        type=float,
+        default=0.75,
+        help="Legacy/debug distance setting; active ghosts are gated by track validation.",
+    )
+    parser.add_argument(
+        "--pose-human-model-confirm-frames",
+        type=int,
+        default=5,
+        help="Frames a new radar TID must persist before full human-model rendering.",
+    )
+    parser.add_argument(
+        "--pose-human-model-confirm-min-geom-pts",
+        type=int,
+        default=3,
+        help="Minimum associated geometry points for one good human-model confirmation frame.",
+    )
+    parser.add_argument(
+        "--pose-human-model-confirm-min-quality-frames",
+        type=int,
+        default=3,
+        help="Good evidence frames required in the confirmation window.",
+    )
+    parser.add_argument(
+        "--pose-human-model-confirmed-grace-frames",
+        type=int,
+        default=30,
+        help="Short weak-evidence grace period for already confirmed active tracks.",
+    )
+    parser.add_argument(
+        "--pose-human-model-bad-evidence-demote-frames",
+        type=int,
+        default=60,
+        help=(
+            "Legacy/debug threshold for bad-evidence handling on unconfirmed tracks. "
+            "Confirmed active tracks are retained and only disappear after lost/stale cleanup."
+        ),
+    )
+    parser.add_argument(
+        "--pose-human-model-ghost-min-bad-frames",
+        type=int,
+        default=8,
+        help="Consecutive bad-evidence frames before a provisional active track is suspect.",
+    )
+    parser.add_argument(
+        "--pose-human-model-ghost-no-points-frames",
+        type=int,
+        default=8,
+        help="Consecutive no-point frames before a provisional active track is suspect.",
+    )
+    parser.add_argument(
+        "--pose-human-model-show-provisional",
+        action="store_true",
+        help="Debug only: show provisional tracks without strong posture labels.",
+    )
+    parser.add_argument(
+        "--pose-human-model-show-suspect",
+        action="store_true",
+        help="Debug only: show suspect ghost tracks without strong posture labels.",
+    )
+    parser.add_argument(
         "--pose-human-model-opacity",
         type=float,
         default=1.0,
@@ -548,6 +661,65 @@ def parse_args() -> argparse.Namespace:
         help="Allow target-only or NO_POINTS evidence to switch displayed STANDING to SITTING.",
     )
     parser.add_argument(
+        "--pose-sitting-relative-gate",
+        dest="pose_sitting_relative_gate",
+        action="store_true",
+        default=True,
+        help=(
+            "Enable the offline-sweep-selected relative sitting transition route: "
+            "SITTING can replace displayed STANDING when sit probability consistently "
+            "exceeds stand probability at the configured range, margin, and stability."
+        ),
+    )
+    parser.add_argument(
+        "--pose-disable-sitting-relative-gate",
+        dest="pose_sitting_relative_gate",
+        action="store_false",
+        help="Disable the relative sit-vs-stand transition route.",
+    )
+    parser.add_argument(
+        "--pose-sitting-relative-range-min-m",
+        type=float,
+        default=3.0,
+        help=(
+            "Minimum target range for the refined relative sitting gate. The default "
+            "protects near-range standing frames found in offline regression mining."
+        ),
+    )
+    parser.add_argument(
+        "--pose-sitting-relative-min-prob",
+        type=float,
+        default=0.55,
+        help=(
+            "Minimum SITTING probability for the refined relative sitting gate; "
+            "selected by offline sweep, not random threshold tuning."
+        ),
+    )
+    parser.add_argument(
+        "--pose-sitting-relative-margin",
+        type=float,
+        default=0.12,
+        help="Minimum SITTING minus STANDING probability margin for the relative sitting gate.",
+    )
+    parser.add_argument(
+        "--pose-sitting-relative-frames",
+        type=int,
+        default=16,
+        help="Consecutive frames required before the relative sitting gate can switch STANDING to SITTING.",
+    )
+    parser.add_argument(
+        "--pose-sitting-relative-standing-veto-prob",
+        type=float,
+        default=0.50,
+        help="Block the relative sitting gate when STANDING probability is at or above this value.",
+    )
+    parser.add_argument(
+        "--pose-sitting-relative-standing-veto-margin",
+        type=float,
+        default=0.05,
+        help="Block the relative sitting gate when STANDING exceeds SITTING by this margin.",
+    )
+    parser.add_argument(
         "--pose-sit-to-stand-recovery-margin",
         type=float,
         default=0.10,
@@ -697,6 +869,22 @@ def parse_args() -> argparse.Namespace:
         dest="pose_moving_require_translation",
         action="store_false",
         help="Allow sustained speed-only MOVING override for strong stand/sit.",
+    )
+    parser.add_argument(
+        "--pose-moving-override-require-body-translation-for-sitting",
+        dest="pose_moving_override_require_body_translation_for_sitting",
+        action="store_true",
+        default=True,
+        help=(
+            "While relative sitting evidence is stable, require body/target "
+            "translation before MOVING can override SITTING."
+        ),
+    )
+    parser.add_argument(
+        "--pose-disable-moving-override-body-translation-guard",
+        dest="pose_moving_override_require_body_translation_for_sitting",
+        action="store_false",
+        help="Disable the sitting-specific MOVING override body-translation guard.",
     )
     parser.add_argument(
         "--pose-moving-translation-window",
@@ -851,6 +1039,196 @@ def parse_args() -> argparse.Namespace:
     return args
 
 
+def parse_rgb_source_value(value: object):
+    if isinstance(value, int):
+        return value
+    text = str(value).strip()
+    if text.isdigit():
+        return int(text)
+    return text
+
+
+def rgb_backend_flag(cv2_module, backend: str):
+    if str(backend).lower() == "auto":
+        return None
+    names = {
+        "dshow": "CAP_DSHOW",
+        "msmf": "CAP_MSMF",
+        "v4l2": "CAP_V4L2",
+    }
+    return getattr(cv2_module, names[str(backend).lower()], None)
+
+
+def open_rgb_capture_for_probe(cv2_module, source, backend: str):
+    flag = rgb_backend_flag(cv2_module, backend)
+    if str(backend).lower() != "auto" and flag is None:
+        raise RuntimeError(f"OpenCV backend is unavailable: {backend}")
+    if flag is None:
+        return cv2_module.VideoCapture(source)
+    return cv2_module.VideoCapture(source, flag)
+
+
+def probe_rgb_camera_source(source, backend: str) -> dict[str, object]:
+    import cv2
+
+    capture = None
+    info = {
+        "source": str(source),
+        "resolved_source": str(source),
+        "backend": str(backend),
+        "opened": False,
+        "width": 0,
+        "height": 0,
+        "fps": 0.0,
+        "name": "UNKNOWN",
+    }
+    try:
+        capture = open_rgb_capture_for_probe(cv2, source, backend)
+        opened = bool(capture.isOpened())
+        info["opened"] = opened
+        if opened:
+            info["width"] = int(capture.get(cv2.CAP_PROP_FRAME_WIDTH) or 0)
+            info["height"] = int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT) or 0)
+            info["fps"] = float(capture.get(cv2.CAP_PROP_FPS) or 0.0)
+    except Exception as exc:
+        info["error"] = str(exc)
+    finally:
+        if capture is not None:
+            try:
+                capture.release()
+            except Exception:
+                pass
+    return info
+
+
+def probe_rgb_camera_indices(max_index: int, backend: str) -> list[dict[str, object]]:
+    max_index = max(0, int(max_index))
+    print(f"[RGB_CAMERA] probing camera indices 0..{max_index} backend={backend}", flush=True)
+    results = []
+    for index in range(max_index + 1):
+        info = probe_rgb_camera_source(index, backend)
+        results.append(info)
+        line = (
+            "[RGB_CAMERA] index={index} opened={opened} width={width} height={height} "
+            "fps={fps:.1f} backend={backend} name={name}"
+        ).format(
+            index=index,
+            opened=str(bool(info.get("opened"))),
+            width=int(info.get("width") or 0),
+            height=int(info.get("height") or 0),
+            fps=float(info.get("fps") or 0.0),
+            backend=info.get("backend", backend),
+            name=info.get("name", "UNKNOWN"),
+        )
+        if info.get("error"):
+            line += f" error={info['error']}"
+        print(line, flush=True)
+    external_candidates = [
+        index
+        for index, info in enumerate(results)
+        if index > 0 and bool(info.get("opened"))
+    ]
+    print(f"[RGB_CAMERA] recommended external candidates: {external_candidates}", flush=True)
+    return results
+
+
+def should_exit_after_rgb_camera_list(args: argparse.Namespace) -> bool:
+    return (
+        bool(args.rgb_list_cameras)
+        and not args.enable_rgb_panel
+        and not args.enable_rgb_posture
+        and not args.combined_log
+        and not args.combined_status_panel
+        and not args.enable_pose
+    )
+
+
+def resolve_rgb_camera_source(args: argparse.Namespace) -> bool:
+    original_source = parse_rgb_source_value(args.rgb_source)
+    args._rgb_original_source = original_source
+    args._rgb_camera_probe_results = []
+    args._rgb_selected_camera_info = {
+        "source": str(original_source),
+        "resolved_source": str(original_source),
+        "backend": args.rgb_camera_backend,
+        "opened": None,
+        "width": None,
+        "height": None,
+        "fps": None,
+        "prefer_external": bool(args.rgb_prefer_external),
+    }
+
+    if args.rgb_list_cameras or args.rgb_prefer_external:
+        args._rgb_camera_probe_results = probe_rgb_camera_indices(
+            args.rgb_camera_probe_max_index,
+            args.rgb_camera_backend,
+        )
+        if args.rgb_list_cameras and should_exit_after_rgb_camera_list(args):
+            return True
+
+    if args.rgb_prefer_external:
+        print("[RGB_CAMERA] --rgb-prefer-external enabled", flush=True)
+        selected = None
+        for index, info in enumerate(args._rgb_camera_probe_results):
+            if index > 0 and bool(info.get("opened")):
+                selected = (index, info)
+                break
+        if selected is not None:
+            index, info = selected
+            args.rgb_source = index
+            args._rgb_selected_camera_info = {
+                **info,
+                "source": str(original_source),
+                "resolved_source": str(index),
+                "prefer_external": True,
+            }
+            print(
+                "[RGB_CAMERA] selected external camera index={} width={} height={} fps={:.1f}".format(
+                    index,
+                    int(info.get("width") or 0),
+                    int(info.get("height") or 0),
+                    float(info.get("fps") or 0.0),
+                ),
+                flush=True,
+            )
+            return True
+        print(
+            f"[RGB_CAMERA] no external camera found; falling back to --rgb-source {original_source}",
+            flush=True,
+        )
+
+    args.rgb_source = original_source
+    if args.rgb_list_cameras and not should_exit_after_rgb_camera_list(args):
+        info = probe_rgb_camera_source(original_source, args.rgb_camera_backend)
+        args._rgb_selected_camera_info = {
+            **info,
+            "source": str(original_source),
+            "resolved_source": str(original_source),
+            "prefer_external": bool(args.rgb_prefer_external),
+        }
+        if not bool(info.get("opened")):
+            print(
+                f"[RGB_CAMERA] selected source failed to open; source={original_source}",
+                flush=True,
+            )
+            return False
+    else:
+        args._rgb_selected_camera_info = {
+            "source": str(original_source),
+            "resolved_source": str(original_source),
+            "backend": args.rgb_camera_backend,
+            "opened": None,
+            "width": None,
+            "height": None,
+            "fps": None,
+            "prefer_external": bool(args.rgb_prefer_external),
+        }
+
+    print(f"[RGB_CAMERA] selected_source={args.rgb_source}", flush=True)
+    print(f"[RGB_CAMERA] backend={args.rgb_camera_backend}", flush=True)
+    return True
+
+
 def debug_print(enabled: bool, message: str) -> None:
     if enabled:
         print(f"[ti-style-debug] {message}", flush=True)
@@ -919,6 +1297,7 @@ def create_combined_logger(args: argparse.Namespace, debug: bool):
 
         mmwave_git = git_info(PROJECT_DIR)
         rgb_git = git_info(rgb_repo_path)
+        rgb_camera_info = dict(getattr(args, "_rgb_selected_camera_info", {}) or {})
         metadata = {
             "session_id": args.session_id,
             "created_wall_time_iso": wall_time_iso(),
@@ -937,14 +1316,47 @@ def create_combined_logger(args: argparse.Namespace, debug: bool):
             "mmwave_cfg_path": str(resolve_project_path(args.cfg)),
             "mmwave_pose_enabled": bool(args.enable_pose),
             "mmwave_human_models_enabled": bool(args.pose_human_models),
+            "mmwave_human_model_stale_frames": args.pose_human_model_stale_frames,
+            "mmwave_human_model_ghost_distance_m": args.pose_human_model_ghost_distance_m,
+            "mmwave_human_model_confirm_frames": args.pose_human_model_confirm_frames,
+            "mmwave_human_model_confirm_min_geom_pts": (
+                args.pose_human_model_confirm_min_geom_pts
+            ),
+            "mmwave_human_model_confirm_min_quality_frames": (
+                args.pose_human_model_confirm_min_quality_frames
+            ),
+            "mmwave_human_model_confirmed_grace_frames": (
+                args.pose_human_model_confirmed_grace_frames
+            ),
+            "mmwave_human_model_bad_evidence_demote_frames": (
+                args.pose_human_model_bad_evidence_demote_frames
+            ),
+            "mmwave_human_model_ghost_min_bad_frames": (
+                args.pose_human_model_ghost_min_bad_frames
+            ),
+            "mmwave_human_model_ghost_no_points_frames": (
+                args.pose_human_model_ghost_no_points_frames
+            ),
+            "mmwave_human_model_show_provisional": bool(
+                args.pose_human_model_show_provisional
+            ),
+            "mmwave_human_model_show_suspect": bool(args.pose_human_model_show_suspect),
             "rgb_panel_enabled": bool(args.enable_rgb_panel),
             "rgb_posture_enabled": bool(args.enable_rgb_posture),
-            "rgb_source": str(args.rgb_source),
+            "rgb_source": str(getattr(args, "_rgb_original_source", args.rgb_source)),
+            "rgb_resolved_source": str(args.rgb_source),
             "rgb_device": args.rgb_device,
             "rgb_camera_backend": args.rgb_camera_backend,
+            "rgb_prefer_external": bool(args.rgb_prefer_external),
+            "rgb_camera_selected": rgb_camera_info,
             "combined_status_panel": bool(args.combined_status_panel),
             "rgb_log_keypoints": bool(args.rgb_log_keypoints),
             "rgb_log_frames": bool(args.rgb_log_frames),
+            "rgb_record_video": bool(args.rgb_record_video),
+            "rgb_video_output": str(args.rgb_video_output),
+            "rgb_video_fps": args.rgb_video_fps,
+            "rgb_video_codec": args.rgb_video_codec,
+            "rgb_video_max_queue": args.rgb_video_max_queue,
             "mmwave_log_points": bool(args.mmwave_log_points),
             "notes": "",
         }
@@ -959,6 +1371,10 @@ def create_combined_logger(args: argparse.Namespace, debug: bool):
             logger.log_event("git_info_unavailable", {"repo": "mmwave", "error": mmwave_git["error"]})
         if rgb_git["error"]:
             logger.log_event("git_info_unavailable", {"repo": "rgb", "error": rgb_git["error"]})
+        try:
+            logger.log_event("rgb_camera_selected", rgb_camera_info)
+        except Exception:
+            pass
         if args.rgb_log_frames:
             frames_dir = logger.session_dir / "rgb_annotated_frames"
             frames_dir.mkdir(parents=True, exist_ok=True)
@@ -1574,6 +1990,25 @@ def create_pose_manager_before_qt(args: argparse.Namespace, debug: bool):
             label_debug=args.pose_3d_label_debug,
             enable_human_models=args.pose_human_models,
             human_model_debug=args.pose_human_model_debug,
+            human_model_stale_frames=args.pose_human_model_stale_frames,
+            human_model_ghost_distance_m=args.pose_human_model_ghost_distance_m,
+            human_model_confirm_frames=args.pose_human_model_confirm_frames,
+            human_model_confirm_min_geom_pts=args.pose_human_model_confirm_min_geom_pts,
+            human_model_confirm_min_quality_frames=(
+                args.pose_human_model_confirm_min_quality_frames
+            ),
+            human_model_confirmed_grace_frames=(
+                args.pose_human_model_confirmed_grace_frames
+            ),
+            human_model_bad_evidence_demote_frames=(
+                args.pose_human_model_bad_evidence_demote_frames
+            ),
+            human_model_ghost_min_bad_frames=args.pose_human_model_ghost_min_bad_frames,
+            human_model_ghost_no_points_frames=(
+                args.pose_human_model_ghost_no_points_frames
+            ),
+            human_model_show_provisional=args.pose_human_model_show_provisional,
+            human_model_show_suspect=args.pose_human_model_show_suspect,
             display_stability_frames=args.pose_display_stability_frames,
             display_min_confidence=args.pose_display_min_confidence,
             display_hysteresis=args.pose_display_hysteresis,
@@ -1637,6 +2072,20 @@ def create_pose_manager_before_qt(args: argparse.Namespace, debug: bool):
             stand_to_sit_margin=args.pose_stand_to_sit_margin,
             stand_to_sit_frames=args.pose_stand_to_sit_frames,
             stand_to_sit_allow_target_only=args.pose_stand_to_sit_allow_target_only,
+            sitting_relative_gate=args.pose_sitting_relative_gate,
+            sitting_relative_range_min_m=args.pose_sitting_relative_range_min_m,
+            sitting_relative_min_prob=args.pose_sitting_relative_min_prob,
+            sitting_relative_margin=args.pose_sitting_relative_margin,
+            sitting_relative_frames=args.pose_sitting_relative_frames,
+            sitting_relative_standing_veto_prob=(
+                args.pose_sitting_relative_standing_veto_prob
+            ),
+            sitting_relative_standing_veto_margin=(
+                args.pose_sitting_relative_standing_veto_margin
+            ),
+            moving_override_require_body_translation_for_sitting=(
+                args.pose_moving_override_require_body_translation_for_sitting
+            ),
             sit_to_stand_recovery_margin=args.pose_sit_to_stand_recovery_margin,
             sit_to_stand_recovery_frames=args.pose_sit_to_stand_recovery_frames,
             ground_z=args.pose_ground_z,
@@ -1698,11 +2147,15 @@ def attach_pose_manager(window, pose_manager, args: argparse.Namespace, debug: b
                 opacity=args.pose_human_model_opacity,
                 fallback=args.pose_human_model_fallback,
                 debug=args.pose_human_model_debug or debug,
+                stale_ttl_frames=args.pose_human_model_stale_frames,
+                ghost_distance_m=args.pose_human_model_ghost_distance_m,
             )
+            pose_manager._human_model_renderer = renderer
             demo_instance.setPoseHumanModelRenderer(
                 renderer,
                 mode=args.pose_human_model_mode,
             )
+            atexit.register(renderer.clear_all_human_models)
             debug_print(
                 debug or args.pose_human_model_debug,
                 f"human posture models attached: {resolve_project_path(args.pose_human_model_dir)}",
@@ -1733,6 +2186,36 @@ def attach_pose_manager(window, pose_manager, args: argparse.Namespace, debug: b
     return pose_manager
 
 
+def clear_pose_human_models(pose_manager) -> None:
+    renderer = getattr(pose_manager, "_human_model_renderer", None)
+    if renderer is None:
+        return
+    try:
+        if hasattr(renderer, "clear_all_human_models"):
+            renderer.clear_all_human_models()
+        else:
+            renderer.clear()
+    except Exception as exc:
+        print(f"[human-model-warning] shutdown cleanup failed: {exc}", flush=True)
+
+
+def resolve_rgb_video_output(args: argparse.Namespace, combined_logger) -> Path | None:
+    if not args.rgb_record_video:
+        return None
+
+    if args.rgb_video_output:
+        path = Path(args.rgb_video_output).expanduser()
+        if path.is_absolute():
+            return path.resolve()
+        return (PROJECT_DIR / path).resolve()
+
+    if combined_logger is not None and hasattr(combined_logger, "session_dir"):
+        return Path(combined_logger.session_dir) / "videos" / "rgb_annotated.mp4"
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    return PROJECT_DIR / "logs" / f"rgb_annotated_{timestamp}.mp4"
+
+
 def attach_rgb_panel(window, args: argparse.Namespace, debug: bool):
     if not args.enable_rgb_panel:
         debug_print(debug, "RGB panel disabled")
@@ -1743,6 +2226,7 @@ def attach_rgb_panel(window, args: argparse.Namespace, debug: bool):
 
     from rgb_camera_panel import RgbCameraPanel
 
+    video_output = getattr(args, "_resolved_rgb_video_output", None)
     panel = RgbCameraPanel(
         source=args.rgb_source,
         backend=args.rgb_camera_backend,
@@ -1759,6 +2243,11 @@ def attach_rgb_panel(window, args: argparse.Namespace, debug: bool):
         show_skeleton=args.rgb_show_skeleton,
         show_detected=args.rgb_show_detected,
         no_action=args.rgb_no_action,
+        record_video=args.rgb_record_video,
+        video_output=video_output or "",
+        video_fps=args.rgb_video_fps,
+        video_codec=args.rgb_video_codec,
+        video_max_queue=args.rgb_video_max_queue,
     )
     splitter = QSplitter(Qt.Horizontal)
     window.gridLayout.removeWidget(window.demoTabs)
@@ -1778,6 +2267,8 @@ def attach_rgb_panel(window, args: argparse.Namespace, debug: bool):
         "RGB panel attached beside TI demoTabs "
         f"(source={args.rgb_source}, backend={args.rgb_camera_backend})",
     )
+    if args.rgb_record_video:
+        debug_print(debug, f"RGB annotated video output: {video_output}")
     return panel
 
 
@@ -1893,6 +2384,24 @@ def attach_combined_rgb_logging(rgb_panel, combined_logger, status_panel, args: 
             pass
 
 
+def attach_rgb_video_event_logging(rgb_panel, combined_logger, args: argparse.Namespace, debug: bool) -> None:
+    if rgb_panel is None:
+        return
+
+    def on_video_event(event_type, payload):
+        try:
+            if combined_logger is not None:
+                combined_logger.log_event(str(event_type), dict(payload or {}))
+        except Exception as exc:
+            debug_print(debug, f"RGB video event logging failed: {exc}")
+
+    try:
+        rgb_panel.videoEvent.connect(on_video_event)
+        debug_print(debug, "RGB camera/video event hook attached")
+    except Exception as exc:
+        combined_error(f"RGB video event hook attach failed: {exc}")
+
+
 def auto_start(window, debug: bool) -> None:
     debug_print(debug, "auto-start: connecting COM ports via TI Window.onConnect()")
     window.onConnect()
@@ -1909,6 +2418,11 @@ def auto_start(window, debug: bool) -> None:
 
 def main() -> int:
     args = parse_args()
+    rgb_source_ok = resolve_rgb_camera_source(args)
+    if should_exit_after_rgb_camera_list(args):
+        return 0
+    if not rgb_source_ok:
+        return 2
     rgb_panel = None
     status_panel = None
     if args.combined_log or args.combined_status_panel:
@@ -1918,6 +2432,7 @@ def main() -> int:
             f"rgb_log_keypoints={bool(args.rgb_log_keypoints)}"
         )
     combined_logger = create_combined_logger(args, args.debug)
+    args._resolved_rgb_video_output = resolve_rgb_video_output(args, combined_logger)
     pose_manager = create_pose_manager_before_qt(args, args.debug)
     add_import_paths(args.debug)
     using_pyside2_shim = check_pyside2_shim(args.debug)
@@ -1943,6 +2458,7 @@ def main() -> int:
     rgb_panel = attach_rgb_panel(window, args, args.debug)
     status_panel = attach_combined_status_panel(rgb_panel, args, args.debug)
     attach_combined_rgb_logging(rgb_panel, combined_logger, status_panel, args, args.debug)
+    attach_rgb_video_event_logging(rgb_panel, combined_logger, args, args.debug)
     attach_combined_mmwave_logging(window, combined_logger, status_panel, args.debug)
     window.show()
 
@@ -1966,8 +2482,10 @@ def main() -> int:
             "rgb_worker_started",
             {
                 "posture_enabled": bool(args.enable_rgb_posture),
-                "source": str(args.rgb_source),
+                "source": str(getattr(args, "_rgb_original_source", args.rgb_source)),
+                "resolved_source": str(args.rgb_source),
                 "backend": args.rgb_camera_backend,
+                "prefer_external": bool(args.rgb_prefer_external),
             },
         )
 
@@ -1979,6 +2497,7 @@ def main() -> int:
                 combined_logger.log_event("rgb_worker_stopped", {})
             rgb_panel.stop()
         if pose_manager is not None:
+            clear_pose_human_models(pose_manager)
             pose_manager.close()
         if combined_logger is not None:
             combined_logger.log_event("mmwave_stopped", {})

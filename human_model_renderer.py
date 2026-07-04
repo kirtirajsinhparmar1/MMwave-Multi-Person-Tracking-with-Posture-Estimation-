@@ -16,6 +16,7 @@ import pyqtgraph.opengl as gl
 
 
 UNKNOWN_LABELS = {"UNKNOWN", "LOW_QUALITY", "LOW_POINTS", "NO_POINTS", "NO_POSE", "WARMUP"}
+HUMAN_UI_DIAG_INTERVAL_FRAMES = 30
 
 
 @dataclass
@@ -105,6 +106,8 @@ class HumanPoseModelRenderer:
         opacity: float = 1.0,
         fallback: str = "box",
         debug: bool = False,
+        stale_ttl_frames: int = 10,
+        ghost_distance_m: float = 0.75,
     ):
         self.gl_view = gl_view
         self.model_dir = Path(model_dir).expanduser().resolve()
@@ -117,38 +120,75 @@ class HumanPoseModelRenderer:
         self.opacity = max(0.0, min(1.0, float(opacity)))
         self.fallback = str(fallback)
         self.debug = bool(debug)
+        self.stale_ttl_frames = max(0, int(stale_ttl_frames))
+        self.ghost_distance_m = max(0.0, float(ghost_distance_m))
         self.meshes: dict[str, ObjMesh] = {}
         self.model_scales: dict[str, float] = {}
         self.items: dict[int, dict[str, Any]] = {}
+        self.last_seen_frame: dict[int, int] = {}
+        self.last_positions: dict[int, tuple[float, float, float]] = {}
+        self.stale_ages: dict[int, int] = {}
         self.disabled = False
         self._warned = False
+        self._last_diag_frame: int | None = None
+        self._last_frame = 0
+        self._last_summary: dict[str, Any] = {
+            "frame": 0,
+            "active_tracks": 0,
+            "active_tids": [],
+            "renderer_items": 0,
+            "renderer_tids": [],
+            "stale_tids": [],
+        }
         self._load_meshes()
         self._compute_model_scales()
 
-    def update_models(self, records: list[dict] | None) -> None:
+    def update_models(
+        self,
+        records: list[dict] | None,
+        current_frame: int | None = None,
+        active_tids: set[int] | None = None,
+    ) -> None:
         if self.disabled:
             return
 
-        active_tids: set[int] = set()
         try:
-            for record in records or []:
+            frame = self._resolve_frame(current_frame, records)
+            active_tids = self._resolve_active_tids(records, active_tids)
+            active_positions: dict[int, tuple[float, float, float]] = {}
+            records_by_tid = self._records_by_tid(records)
+
+            for tid in sorted(active_tids):
+                record = records_by_tid.get(tid)
+                if record is None:
+                    self._remove_tid(tid, "missing render record")
+                    self.last_seen_frame[tid] = frame
+                    self.stale_ages[tid] = 0
+                    continue
+
                 tid = int(record.get("tid"))
                 model_name = self._model_name_for_label(record.get("final_label"))
                 if model_name is None:
-                    self._hide_tid(tid)
+                    self._remove_tid(tid, "no model for label")
+                    self.last_seen_frame[tid] = frame
+                    self.stale_ages[tid] = 0
                     continue
 
                 mesh = self.meshes.get(model_name)
                 if mesh is None:
                     self._warn_once(f"human model '{model_name}' was not loaded")
-                    self._hide_tid(tid)
+                    self._remove_tid(tid, "mesh missing")
+                    self.last_seen_frame[tid] = frame
+                    self.stale_ages[tid] = 0
                     continue
 
                 x = float(record.get("x", 0.0))
                 y = float(record.get("y", 0.0))
                 z = float(record.get("ground_z", self.ground_z))
                 if not np.all(np.isfinite([x, y, z])):
-                    self._hide_tid(tid)
+                    self._remove_tid(tid, "invalid position")
+                    self.last_seen_frame[tid] = frame
+                    self.stale_ages[tid] = 0
                     continue
 
                 item = self._item_for_tid(tid, model_name, mesh, record)
@@ -157,36 +197,56 @@ class HumanPoseModelRenderer:
                 item.scale(scale, scale, scale)
                 item.translate(x, y, z)
                 item.setVisible(True)
-                active_tids.add(tid)
+                self.last_seen_frame[tid] = frame
+                self.last_positions[tid] = (x, y, z)
+                self.stale_ages[tid] = 0
+                active_positions[tid] = (x, y, z)
 
                 if self.debug:
                     print(
-                        "[human-model] tid={} label={} model={} pos=({:.2f},{:.2f},{:.2f}) scale={:.2f}".format(
+                        "[HUMAN_UI] tid={} pos=({:.2f},{:.2f},{:.2f}) pose={} last_seen={} age={} visible={} item_id={}".format(
                             tid,
-                            record.get("final_label", ""),
-                            model_name,
                             x,
                             y,
                             z,
-                            scale,
+                            record.get("final_label", ""),
+                            self.last_seen_frame.get(tid, frame),
+                            frame - self.last_seen_frame.get(tid, frame),
+                            True,
+                            id(item),
                         ),
                         flush=True,
                     )
 
-            for tid in list(self.items):
-                if tid not in active_tids:
-                    self._hide_tid(tid)
+            stale_tids = self._reconcile_stale_items(frame, active_tids, active_positions)
+            self._update_summary(frame, active_tids, stale_tids)
+            self._print_summary_if_due(frame)
         except Exception as exc:
             self.disabled = True
             self._warn_once(f"human model rendering disabled after failure: {exc}")
-            self.clear()
+            self.clear_all_human_models()
 
     def clear(self) -> None:
-        for entry in self.items.values():
-            try:
-                entry["item"].setVisible(False)
-            except Exception:
-                pass
+        self.clear_all_human_models()
+
+    def clear_all_human_models(self) -> None:
+        for tid in list(self.items):
+            self._remove_tid(tid, "clear")
+        self.items.clear()
+        self.last_seen_frame.clear()
+        self.last_positions.clear()
+        self.stale_ages.clear()
+        self._last_summary = {
+            "frame": self._last_frame,
+            "active_tracks": 0,
+            "active_tids": [],
+            "renderer_items": 0,
+            "renderer_tids": [],
+            "stale_tids": [],
+        }
+
+    def get_debug_summary(self) -> dict[str, Any]:
+        return dict(self._last_summary)
 
     def _load_meshes(self) -> None:
         file_map = {
@@ -270,6 +330,126 @@ class HumanPoseModelRenderer:
         self.items[tid] = {"item": item, "model": model_name}
         return item
 
+    def _resolve_frame(self, current_frame: int | None, records: list[dict] | None) -> int:
+        if current_frame is not None:
+            try:
+                self._last_frame = int(current_frame)
+                return self._last_frame
+            except Exception:
+                pass
+        for record in records or []:
+            try:
+                self._last_frame = int(record.get("frame"))
+                return self._last_frame
+            except Exception:
+                continue
+        self._last_frame += 1
+        return self._last_frame
+
+    def _resolve_active_tids(
+        self, records: list[dict] | None, active_tids: set[int] | None
+    ) -> set[int]:
+        if active_tids is not None:
+            result = set()
+            for tid in active_tids:
+                try:
+                    result.add(int(tid))
+                except Exception:
+                    continue
+            return result
+        result = set()
+        for record in records or []:
+            try:
+                result.add(int(record.get("tid")))
+            except Exception:
+                continue
+        return result
+
+    def _records_by_tid(self, records: list[dict] | None) -> dict[int, dict]:
+        result: dict[int, dict] = {}
+        for record in records or []:
+            try:
+                result[int(record.get("tid"))] = record
+            except Exception:
+                continue
+        return result
+
+    def _reconcile_stale_items(
+        self,
+        frame: int,
+        active_tids: set[int],
+        active_positions: dict[int, tuple[float, float, float]],
+    ) -> list[int]:
+        stale_tids: list[int] = []
+        for tid in list(self.items):
+            if tid in active_tids:
+                continue
+            last_seen = int(self.last_seen_frame.get(tid, frame))
+            age = frame - last_seen
+            self.stale_ages[tid] = age
+            stale_tids.append(tid)
+            if self.debug:
+                entry = self.items.get(tid, {})
+                position = self.last_positions.get(tid, (float("nan"), float("nan"), float("nan")))
+                print(
+                    "[HUMAN_UI] tid={} pos=({:.2f},{:.2f},{:.2f}) pose={} last_seen={} age={} visible={} item_id={}".format(
+                        tid,
+                        float(position[0]),
+                        float(position[1]),
+                        float(position[2]),
+                        entry.get("model", ""),
+                        last_seen,
+                        age,
+                        True,
+                        id(entry.get("item")),
+                    ),
+                    flush=True,
+                )
+            if age >= self.stale_ttl_frames:
+                if self.debug:
+                    print(
+                        f"[HUMAN_UI] removed stale tid={tid} age={age} reason=removed_stale_not_active",
+                        flush=True,
+                    )
+                self._remove_tid(tid, "removed_stale_not_active")
+        return stale_tids
+
+    def _update_summary(
+        self,
+        frame: int,
+        active_tids: set[int],
+        stale_tids: list[int],
+    ) -> None:
+        renderer_tids = sorted(int(tid) for tid in self.items)
+        self._last_summary = {
+            "frame": int(frame),
+            "active_tracks": len(active_tids),
+            "active_tids": sorted(int(tid) for tid in active_tids),
+            "renderer_items": len(renderer_tids),
+            "renderer_tids": renderer_tids,
+            "stale_tids": sorted(int(tid) for tid in stale_tids),
+        }
+
+    def _print_summary_if_due(self, frame: int) -> None:
+        if (
+            self._last_diag_frame is not None
+            and frame - self._last_diag_frame < HUMAN_UI_DIAG_INTERVAL_FRAMES
+        ):
+            return
+        self._last_diag_frame = frame
+        summary = self._last_summary
+        print(
+            "[HUMAN_UI] frame={} active_tracks={} active_tids={} renderer_items={} renderer_tids={} stale_tids={}".format(
+                summary["frame"],
+                summary["active_tracks"],
+                summary["active_tids"],
+                summary["renderer_items"],
+                summary["renderer_tids"],
+                summary["stale_tids"],
+            ),
+            flush=True,
+        )
+
     def _model_name_for_label(self, label) -> str | None:
         text = str(label).upper()
         if text in {"SITTING"}:
@@ -299,6 +479,27 @@ class HumanPoseModelRenderer:
                 entry["item"].setVisible(False)
             except Exception:
                 pass
+
+    def _remove_tid(self, tid: int, reason: str = "") -> None:
+        tid = int(tid)
+        entry = self.items.pop(tid, None)
+        if entry is None:
+            return
+        item = entry.get("item")
+        try:
+            self.gl_view.removeItem(item)
+        except Exception as exc:
+            try:
+                item.setVisible(False)
+            except Exception:
+                pass
+            print(
+                f"[human-model-warning] failed to remove TID {tid} ({reason}): {exc}",
+                flush=True,
+            )
+        self.last_positions.pop(tid, None)
+        self.last_seen_frame.pop(tid, None)
+        self.stale_ages.pop(tid, None)
 
     def _color_for_label(self, label, quality):
         alpha = self.opacity

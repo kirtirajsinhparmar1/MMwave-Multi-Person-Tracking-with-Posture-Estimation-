@@ -1,0 +1,320 @@
+<html><head><meta charset='utf-8'><title>Distance/Posture Benchmark Report</title></head><body><pre># Distance/Posture Benchmark Report
+
+## Executive summary
+- Session analyzed: `C:\Users\UBESC\Desktop\Combined MMwave and RGB\logs\session_20260703_205540`
+- Tracking: strong in this session. Presence rate was 100% across all distance/pose segments with no ID switches, no dropouts, and no extra-track rate.
+- Posture: weak for sitting. Standing accuracy was 99.387%, but sitting accuracy was 47.358%, with the worst failures in sitting_4m, sitting_3m, sitting_1m.
+- Main failure: sitting is confused as STANDING, especially at 3m and 4m.
+- Range/calibration: no tracking failure threshold was crossed; sitting_3m, sitting_4m show minor range/jitter bias.
+- Point-density: NO_POINTS is common in both standing and sitting, but only sitting collapses. Therefore the primary failure is sitting-vs-standing discrimination under sparse geometry, not general tracking loss.
+- Is sitting worse than standing? yes
+- Is 1m worse than 2m/3m/4m? no
+- Warning count: 0
+
+## Session analyzed
+| rank | path | modified_time_iso | useful_score | csv_count | notes |
+| --- | --- | --- | --- | --- | --- |
+| 1 | C:\Users\UBESC\Desktop\Combined MMwave and RGB\logs\session_20260703_205540 | 2026-07-04 01:05:03 | 40 | 8 | useful files found |
+| 2 | C:\Users\UBESC\Desktop\Combined MMwave and RGB\mmwave_pose_ui_4ec2b00\logs\external_camera_confirmed_retention_test | 2026-07-04 01:05:03 | 7 | 1 | useful files found |
+| 3 | C:\Users\UBESC\Desktop\Combined MMwave and RGB\logs\session_20260703_205014 | 2026-07-04 00:54:08 | 40 | 8 | useful files found |
+| 4 | C:\Users\UBESC\Desktop\Combined MMwave and RGB\logs\session_20260703_203646 | 2026-07-04 00:38:37 | 40 | 8 | useful files found |
+| 5 | C:\Users\UBESC\Desktop\Combined MMwave and RGB\mmwave_pose_ui_4ec2b00\logs\external_usb_camera_dshow_test | 2026-07-04 00:38:37 | 7 | 1 | useful files found |
+| 6 | C:\Users\UBESC\Desktop\Combined MMwave and RGB\logs\session_20260703_203500 | 2026-07-04 00:35:51 | 40 | 8 | useful files found |
+| 7 | C:\Users\UBESC\Desktop\Combined MMwave and RGB\logs\session_20260703_203421 | 2026-07-04 00:34:37 | 40 | 8 | useful files found |
+| 8 | C:\Users\UBESC\Desktop\Combined MMwave and RGB\logs\session_20260703_202838 | 2026-07-04 00:30:09 | 40 | 8 | useful files found |
+| 9 | C:\Users\UBESC\Desktop\Combined MMwave and RGB\mmwave_pose_ui_4ec2b00\logs\external_usb_camera_multiperson_validation_test | 2026-07-04 00:30:08 | 7 | 1 | useful files found |
+| 10 | C:\Users\UBESC\Desktop\Combined MMwave and RGB\logs\session_20260703_202712 | 2026-07-04 00:28:09 | 40 | 8 | useful files found |
+
+_Showing 10 of 31 rows._
+
+## Files discovered
+| file | exists | rows | time/frame column detected | notes |
+| --- | --- | --- | --- | --- |
+| mmwave_frames.csv | True | 10059 | host_wall_time_iso, host_monotonic_ns, mmwave_frame_num |  |
+| mmwave_tracks.csv | True | 9204 | host_wall_time_iso, host_monotonic_ns, mmwave_frame_num |  |
+| mmwave_pose.csv | True | 9204 | host_wall_time_iso, host_monotonic_ns, mmwave_frame_num |  |
+| pose_predictions_ui.csv | False | NA |  |  |
+| pose_ui_metadata.json | False | NA |  |  |
+| targets.csv | False | NA |  |  |
+| frames_summary.csv | False | NA |  |  |
+| rgb_frames.csv | True | 2100 | host_wall_time_iso, host_monotonic_ns, rgb_frame_num, frame_read_ok |  |
+| rgb_tracks.csv | True | 4333 | host_wall_time_iso, host_monotonic_ns, rgb_frame_num, time_since_update |  |
+| rgb_keypoints.csv | True | 56329 | host_wall_time_iso, host_monotonic_ns, rgb_frame_num |  |
+| sync_index.csv | True | 12159 | host_wall_time_iso, host_monotonic_ns, source_frame_num, latest_mmwave_frame_num, latest_mmwave_monotonic_ns, latest_rgb_frame_num |  |
+| events.csv | False | NA |  |  |
+| events.jsonl | True | 9 |  | 3265 bytes |
+| session_metadata.json | True | NA |  | 2330 bytes |
+| combined_events.csv | False | NA |  |  |
+| rgb_annotated.mp4 | True | NA |  | 29958555 bytes |
+| rgb_actions.csv | True | 0 | host_wall_time_iso, host_monotonic_ns, rgb_frame_num | extra discovered file |
+
+## Protocol and inferred/manual segments
+The expected order is standing 1m, 2m, 3m, 4m, then sitting 1m, 2m, 3m, 4m. Auto segmentation uses range plateaus when possible and equal-time fallback when uncertain.
+
+| segment_id | expected_pose | expected_distance_m | expected_order | start_time_s | end_time_s | duration_s | method | confidence | notes | start_frame | end_frame |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| standing_1m | STANDING | 1.0 | 1 | 16.0 | 60.82899999999999 | 44.82899999999999 | auto_range_plateau_trimmed | 0.8150727272727271 | raw=11.00-65.83s; tol=0.55m; samples=869 | 275.0 | 1089.0 |
+| standing_2m | STANDING | 2.0 | 2 | 72.86 | 114.344 | 41.483999999999995 | auto_range_plateau_trimmed | 0.9218666666666665 | raw=67.86-119.34s; tol=0.45m; samples=822 | 1307.0 | 2064.0 |
+| standing_3m | STANDING | 3.0 | 3 | 126.344 | 167.829 | 41.485000000000014 | auto_range_plateau_trimmed | 0.9218888888888892 | raw=121.34-172.83s; tol=0.45m; samples=800 | 2278.0 | 3029.0 |
+| standing_4m | STANDING | 4.0 | 4 | 179.844 | 218.36 | 38.51600000000002 | auto_range_plateau_trimmed | 0.7002909090909094 | raw=174.84-223.36s; tol=0.55m; samples=724 | 3245.0 | 3950.0 |
+| sitting_1m | SITTING | 1.0 | 5 | 240.625 | 301.532 | 60.90699999999998 | auto_range_plateau_trimmed | 1.0 | raw=235.62-306.53s; tol=0.55m; samples=1117 | 4352.0 | 5456.0 |
+| sitting_2m | SITTING | 2.0 | 6 | 350.594 | 393.125 | 42.531000000000006 | auto_range_plateau_trimmed | 0.9451333333333335 | raw=350.59-393.12s; tol=0.45m; samples=682 | 6355.0 | 7128.0 |
+| sitting_3m | SITTING | 3.0 | 7 | 400.157 | 453.235 | 53.07800000000003 | auto_range_plateau_trimmed | 0.8165846153846159 | raw=395.16-458.24s; tol=0.65m; samples=1009 | 7255.0 | 8231.0 |
+| sitting_4m | SITTING | 4.0 | 8 | 486.125 | 545.704 | 59.57899999999995 | auto_range_plateau_trimmed | 1.0 | raw=481.12-550.70s; tol=0.55m; samples=1060 | 8834.0 | 9871.0 |
+
+## Segment verification required
+- Auto segments: `C:\Users\UBESC\Desktop\Combined MMwave and RGB\mmwave_pose_ui_4ec2b00\analysis_outputs\latest_distance_posture_analysis_v2\segments_auto.csv`
+- Manual template: `C:\Users\UBESC\Desktop\Combined MMwave and RGB\mmwave_pose_ui_4ec2b00\analysis_outputs\latest_distance_posture_analysis_v2\segments_manual_template.csv`
+- Range timeline: `C:\Users\UBESC\Desktop\Combined MMwave and RGB\mmwave_pose_ui_4ec2b00\analysis_outputs\latest_distance_posture_analysis_v2\plots\timeline_range_by_track.png`
+- RGB video: `C:\Users\UBESC\Desktop\Combined MMwave and RGB\logs\session_20260703_205540\videos\rgb_annotated.mp4`
+
+Before treating posture numbers as final, verify the auto boundaries against the RGB video and range timeline. If boundaries are off, edit `segments_manual_template.csv` and rerun with `--manual-segments`.
+
+## Tracking accuracy results
+| segment_id | expected_pose | expected_distance_m | expected_person_count | frames_total | frames_with_any_target | frames_with_primary_target | tracking_presence_rate | dropout_frames | dropout_rate | longest_dropout_s | mean_range_m | median_range_m | std_range_m | mae_range_m | rmse_range_m | bias_m | p50_abs_error_m | p90_abs_error_m | p95_abs_error_m | std_x_m | std_y_m | std_z_m | range_jitter_p95_m | xy_jitter_m | unique_tids | primary_tid | tid_switch_count | tid_switch_rate_per_min | mean_tid_lifetime_s | fragmentation_count | mean_active_tracks | max_active_tracks | frames_with_extra_tracks | extra_track_rate | ghost_track_count | ghost_frames | ghost_duration_s | ghost_nearest_distance_to_primary_m | presence_component | range_component | ghost_component | id_switch_component | dropout_component | jitter_component | tracking_score |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| standing_1m | STANDING | 1.0 | 1 | 815 | 815 | 815 | 1.0 | 0 | 0.0 | 0.0 | 0.9934543437442761 | 0.9911605230255972 | 0.017602163490247617 | 0.015283274178782268 | 0.018769699206129684 | -0.00654565625572381 | 0.014020067973308015 | 0.030663847472238652 | 0.0368817653070207 | 0.015587148116017102 | 0.017673529435626518 | 0.06921903160312327 | 0.03437810919671006 | 0.021164975363200736 | 1 | 0 | 0 | 0.0 | 44.766 | 0 | 1.0 | 1.0 | 0 | 0.0 | 0 | 0 | NA | NA | 1.0 | 0.9847167258212177 | 1.0 | 1.0 | 1.0 | 0.9312437816065798 | 99.27413705356334 |
+| standing_2m | STANDING | 2.0 | 1 | 757 | 757 | 757 | 1.0 | 0 | 0.0 | 0.0 | 1.9342766232799637 | 1.9305804098085348 | 0.010734915099822767 | 0.06572337672003623 | 0.06659315594937817 | -0.06572337672003623 | 0.06941959019146515 | 0.07768029827212031 | 0.07803690957259457 | 0.01064289296719912 | 0.011305827065662574 | 0.09895865595453382 | 0.02130838187559103 | 0.014653597329306798 | 1 | 0 | 0 | 0.0 | 41.45399999999999 | 0 | 1.0 | 1.0 | 0 | 0.0 | 0 | 0 | NA | NA | 1.0 | 0.9342766232799637 | 1.0 | 1.0 | 1.0 | 0.9573832362488179 | 98.14383176324318 |
+| standing_3m | STANDING | 3.0 | 1 | 752 | 752 | 752 | 1.0 | 0 | 0.0 | 0.0 | 2.958098917058722 | 2.9567182705697306 | 0.006486589624559909 | 0.04190108294127775 | 0.04239953590179731 | -0.04190108294127775 | 0.04328172943026942 | 0.049172846847279406 | 0.049172846847279406 | 0.018039401831283938 | 0.007148380945574528 | 0.05014750050549265 | 0.009804362798247368 | 0.017263813563872014 | 1 | 0 | 0 | 0.0 | 41.485000000000014 | 0 | 1.0 | 1.0 | 0 | 0.0 | 0 | 0 | NA | NA | 1.0 | 0.9580989170587223 | 1.0 | 1.0 | 1.0 | 0.9803912744035053 | 98.85442929848558 |
+| standing_4m | STANDING | 4.0 | 1 | 705 | 705 | 705 | 1.0 | 0 | 0.0 | 0.0 | 3.967390314359125 | 3.9799837321444334 | 0.019878211814271397 | 0.03260968564087591 | 0.03818343116552566 | -0.03260968564087591 | 0.02001626785556665 | 0.06887671118939442 | 0.06887671118939442 | 0.028595867733092167 | 0.02090394660254359 | 0.021509744091181563 | 0.048860443333827774 | 0.029772547374588933 | 1 | 0 | 0 | 0.0 | 38.375 | 0 | 1.0 | 1.0 | 0 | 0.0 | 0 | 0 | NA | NA | 1.0 | 0.967390314359124 | 1.0 | 1.0 | 1.0 | 0.9022791133323445 | 98.69615342563982 |
+| sitting_1m | SITTING | 1.0 | 1 | 1105 | 1105 | 1105 | 1.0 | 0 | 0.0 | 0.0 | 1.1075414778777442 | 1.0827825608605497 | 0.0756312387477801 | 0.11631414744723337 | 0.1314537074098646 | 0.10754147787774422 | 0.08368223195267066 | 0.17070445341681828 | 0.17754433022781435 | 0.03880428268316937 | 0.07684761300054135 | 0.04559794046551584 | 0.10352041230724829 | 0.06402913155628734 | 1 | 3 | 0 | 0.0 | 60.85900000000001 | 0 | 1.0 | 1.0 | 0 | 0.0 | 0 | 0 | NA | NA | 1.0 | 0.8836858525527667 | 1.0 | 1.0 | 1.0 | 0.7929591753855034 | 96.05694219074668 |
+| sitting_2m | SITTING | 2.0 | 1 | 774 | 774 | 774 | 1.0 | 0 | 0.0 | 0.0 | 2.0822837427144707 | 2.0562049267912568 | 0.07948941498268824 | 0.09127172860717588 | 0.11437227761137578 | 0.0822837427144708 | 0.05620492679125677 | 0.16961493942723002 | 0.1767226617393358 | 0.037538946551135155 | 0.07895703312032495 | 0.06096233473402777 | 0.1242922777931413 | 0.0653994276773271 | 1 | 6 | 0 | 0.0 | 42.531000000000006 | 0 | 1.0 | 1.0 | 0 | 0.0 | 0 | 0 | NA | NA | 1.0 | 0.9087282713928241 | 1.0 | 1.0 | 1.0 | 0.7514154444137174 | 96.4752840068892 |
+| sitting_3m | SITTING | 3.0 | 1 | 976 | 976 | 976 | 1.0 | 0 | 0.0 | 0.0 | 2.7872143555527216 | 2.8830093047506926 | 0.2587788784034966 | 0.2590602174732986 | 0.33492629810944974 | -0.21278564444727852 | 0.13499954852135332 | 0.4892664689485433 | 0.4892664689485433 | 0.21342358843758957 | 0.25207650667060494 | 0.2375346522129939 | 0.3722757736992359 | 0.32351686662421136 | 1 | 6 | 0 | 0.0 | 53.031000000000006 | 0 | 1.0 | 1.0 | 0 | 0.0 | 0 | 0 | NA | NA | 1.0 | 0.7409397825267015 | 1.0 | 1.0 | 1.0 | 0.25544845260152815 | 89.80073682617517 |
+| sitting_4m | SITTING | 4.0 | 1 | 1038 | 1038 | 1038 | 1.0 | 0 | 0.0 | 0.0 | 3.831246898030489 | 3.8567625548751385 | 0.17741343203356472 | 0.18050125792960053 | 0.24479136432402004 | -0.16875310196951115 | 0.1432374451248617 | 0.48461849225337605 | 0.5228522761452754 | 0.045603605946090385 | 0.18008976405672505 | 0.1587466071274302 | 0.37961483102041393 | 0.161932995581437 | 1 | 7 | 0 | 0.0 | 59.56299999999999 | 0 | 1.0 | 1.0 | 0 | 0.0 | 0 | 0 | NA | NA | 1.0 | 0.8194987420703994 | 1.0 | 1.0 | 1.0 | 0.24077033795917213 | 91.69132024155584 |
+
+## Tracking verdict by segment
+| segment_id | expected_pose | expected_distance_m | tracking_presence_rate | range_mae_m | dropout_rate | extra_track_rate | tid_switch_count | tracking_score | tracking_verdict | tracking_issue_reason |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| standing_1m | STANDING | 1.0 | 1.0 | 0.015283274178782268 | 0.0 | 0.0 | 0 | 99.27413705356334 | GOOD | Presence is high with no meaningful dropout, ID-switch, or extra-track issue. |
+| standing_2m | STANDING | 2.0 | 1.0 | 0.06572337672003623 | 0.0 | 0.0 | 0 | 98.14383176324318 | GOOD | Presence is high with no meaningful dropout, ID-switch, or extra-track issue. |
+| standing_3m | STANDING | 3.0 | 1.0 | 0.04190108294127775 | 0.0 | 0.0 | 0 | 98.85442929848558 | GOOD | Presence is high with no meaningful dropout, ID-switch, or extra-track issue. |
+| standing_4m | STANDING | 4.0 | 1.0 | 0.03260968564087591 | 0.0 | 0.0 | 0 | 98.69615342563982 | GOOD | Presence is high with no meaningful dropout, ID-switch, or extra-track issue. |
+| sitting_1m | SITTING | 1.0 | 1.0 | 0.11631414744723337 | 0.0 | 0.0 | 0 | 96.05694219074668 | GOOD | Presence is high with no meaningful dropout, ID-switch, or extra-track issue. |
+| sitting_2m | SITTING | 2.0 | 1.0 | 0.09127172860717588 | 0.0 | 0.0 | 0 | 96.4752840068892 | GOOD | Presence is high with no meaningful dropout, ID-switch, or extra-track issue. |
+| sitting_3m | SITTING | 3.0 | 1.0 | 0.2590602174732986 | 0.0 | 0.0 | 0 | 89.80073682617517 | MINOR_RANGE_BIAS | Tracking is continuous, but range MAE is a minor calibration/bias issue. |
+| sitting_4m | SITTING | 4.0 | 1.0 | 0.18050125792960053 | 0.0 | 0.0 | 0 | 91.69132024155584 | MINOR_RANGE_BIAS | Tracking is continuous, but range MAE is a minor calibration/bias issue. |
+
+## Posture accuracy results
+| segment_id | expected_pose | expected_distance_m | frames_total | frames_with_pose_prediction | dominant_display_pose | correct_frames | accuracy | unknown_rate | moving_rate | falling_false_rate | lying_false_rate | standing_rate | sitting_rate | mean_stand_prob | mean_sit_prob | median_stand_prob | median_sit_prob | mean_confidence_if_available | time_to_first_correct_s | time_to_stable_correct_s | longest_correct_run_s | longest_wrong_run_s | pose_switch_count | pose_switch_rate_per_min | dominant_wrong_pose |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| standing_1m | STANDING | 1.0 | 815 | 815 | STANDING | 795 | 0.9754601226993865 | 0.0 | 0.0 | 0.0 | 0.0 | 0.9754601226993865 | 0.024539877300613498 | 0.6585164146737819 | 0.291524002705615 | 0.681851327419281 | 0.2672724723815918 | 0.6814509025746328 | 1.1099999999999994 | 1.1099999999999994 | 43.656 | 0.9849999999999994 | 1 | 1.3384193267750788 | SITTING |
+| standing_2m | STANDING | 2.0 | 757 | 757 | STANDING | 757 | 1.0 | 0.0 | 0.0 | 0.0 | 0.0 | 1.0 | 0.0 | 0.7411613384830117 | 0.2046711247714539 | 0.7390885949134827 | 0.2036099135875702 | 0.7423203526903805 | 0.015000000000000568 | 0.015000000000000568 | 41.45399999999999 | 0.0 | 0 | 0.0 | NA |
+| standing_3m | STANDING | 3.0 | 752 | 752 | STANDING | 752 | 1.0 | 0.0 | 0.0 | 0.0 | 0.0 | 1.0 | 0.0 | 0.8001523620666976 | 0.15045191958903315 | 0.8135269284248352 | 0.1394541710615158 | 0.800934336128387 | 0.0 | 0.0 | 41.485000000000014 | 0.0 | 0 | 0.0 | NA |
+| standing_4m | STANDING | 4.0 | 705 | 705 | STANDING | 705 | 1.0 | 0.0 | 0.0 | 0.0 | 0.0 | 1.0 | 0.0 | 0.8225238129602256 | 0.1294961779886949 | 0.8292367458343506 | 0.1222337335348129 | 0.8225238129602256 | 0.07800000000000296 | 0.07800000000000296 | 38.375 | 0.0 | 0 | 0.0 | NA |
+| sitting_1m | SITTING | 1.0 | 1105 | 1105 | SITTING | 745 | 0.6742081447963801 | 0.0 | 0.03891402714932127 | 0.0 | 0.0 | 0.2868778280542986 | 0.6742081447963801 | 0.32867417606078425 | 0.5845142493150892 | 0.3771441876888275 | 0.5284150242805481 | 0.5938139210459333 | 2.4850000000000136 | 2.4850000000000136 | 33.98399999999998 | 17.25 | 3 | 2.9553253320636386 | STANDING |
+| sitting_2m | SITTING | 2.0 | 774 | 774 | SITTING | 578 | 0.7467700258397932 | 0.020671834625323 | 0.04909560723514212 | 0.0 | 0.0 | 0.1834625322997416 | 0.7467700258397932 | 0.3379895770016851 | 0.5655720464557948 | 0.3611790537834167 | 0.5371032357215881 | 0.5814262304734198 | 1.9379999999999882 | 15.328000000000031 | 26.843999999999994 | 8.562000000000012 | 6 | 8.464414192001128 | STANDING |
+| sitting_3m | SITTING | 3.0 | 976 | 976 | STANDING | 462 | 0.4733606557377049 | 0.0 | 0.042008196721311473 | 0.0 | 0.0 | 0.48463114754098363 | 0.4733606557377049 | 0.3608604644236277 | 0.4979270594041856 | 0.216000497341156 | 0.5580858588218689 | 0.6180378545197796 | 4.109000000000037 | 31.390000000000043 | 21.687999999999988 | 23.687999999999988 | 7 | 7.9128829270130705 | STANDING |
+| sitting_4m | SITTING | 4.0 | 1038 | 1038 | STANDING | 0 | 0.0 | 0.05009633911368015 | 0.0 | 0.0 | 0.0 | 0.9499036608863198 | 0.0 | 0.5594226887201987 | 0.33389442454779483 | 0.62786865234375 | 0.2851841598749161 | 0.6324815544836324 | NA | NA | 0.0 | 59.56299999999999 | 4 | 4.028264992698773 | STANDING |
+
+## Posture verdict by segment
+| segment_id | expected_pose | expected_distance_m | accuracy | dominant_display_pose | dominant_wrong_pose | standing_rate | sitting_rate | moving_rate | unknown_rate | quality_NO_POINTS_rate | mean_geom_pts | mean_stand_prob | mean_sit_prob | time_to_stable_correct_s | posture_verdict | posture_issue_reason |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| standing_1m | STANDING | 1.0 | 0.9754601226993865 | STANDING | SITTING | 0.9754601226993865 | 0.024539877300613498 | 0.0 | 0.0 | 0.3803680981595092 | 1.7644171779141105 | 0.6585164146737819 | 0.291524002705615 | 1.1099999999999994 | GOOD | Accuracy is 0.975. |
+| standing_2m | STANDING | 2.0 | 1.0 | STANDING | NA | 1.0 | 0.0 | 0.0 | 0.0 | 0.7371202113606341 | 0.5455746367239102 | 0.7411613384830117 | 0.2046711247714539 | 0.015000000000000568 | GOOD | Accuracy is 1.000. |
+| standing_3m | STANDING | 3.0 | 1.0 | STANDING | NA | 1.0 | 0.0 | 0.0 | 0.0 | 0.9188829787234043 | 0.16356382978723405 | 0.8001523620666976 | 0.15045191958903315 | 0.0 | GOOD | Accuracy is 1.000. |
+| standing_4m | STANDING | 4.0 | 1.0 | STANDING | NA | 1.0 | 0.0 | 0.0 | 0.0 | 0.9631205673758865 | 0.06524822695035461 | 0.8225238129602256 | 0.1294961779886949 | 0.07800000000000296 | GOOD | Accuracy is 1.000. |
+| sitting_1m | SITTING | 1.0 | 0.6742081447963801 | SITTING | STANDING | 0.2868778280542986 | 0.6742081447963801 | 0.03891402714932127 | 0.0 | 0.7321266968325791 | 0.7592760180995475 | 0.32867417606078425 | 0.5845142493150892 | 2.4850000000000136 | FAILED | Accuracy is below the 70% failure threshold. |
+| sitting_2m | SITTING | 2.0 | 0.7467700258397932 | SITTING | STANDING | 0.1834625322997416 | 0.7467700258397932 | 0.04909560723514212 | 0.020671834625323 | 0.8191214470284238 | 0.8617571059431525 | 0.3379895770016851 | 0.5655720464557948 | 15.328000000000031 | WEAK | Accuracy is below the strong-pass threshold but not a full failure. |
+| sitting_3m | SITTING | 3.0 | 0.4733606557377049 | STANDING | STANDING | 0.48463114754098363 | 0.4733606557377049 | 0.042008196721311473 | 0.0 | 0.8135245901639344 | 0.8319672131147541 | 0.3608604644236277 | 0.4979270594041856 | 31.390000000000043 | SIT_AS_STAND | Expected SITTING is displayed as STANDING more often than SITTING. |
+| sitting_4m | SITTING | 4.0 | 0.0 | STANDING | STANDING | 0.9499036608863198 | 0.0 | 0.0 | 0.05009633911368015 | 0.7552986512524085 | 0.7707129094412332 | 0.5594226887201987 | 0.33389442454779483 | NA | SIT_AS_STAND | Expected SITTING is displayed as STANDING more often than SITTING. |
+
+## Sitting-vs-standing probability analysis
+This table answers whether the model probabilities themselves favor STANDING during sitting, or whether later smoothing/gates select STANDING despite ambiguous probabilities.
+
+| segment_id | expected_pose | expected_distance_m | mean_stand_prob | median_stand_prob | p10_stand_prob | p90_stand_prob | mean_sit_prob | median_sit_prob | p10_sit_prob | p90_sit_prob | mean_margin_stand_minus_sit | median_margin_stand_minus_sit | frames_stand_prob_gt_sit_prob | frames_sit_prob_gt_stand_prob |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| standing_1m | STANDING | 1.0 | 0.6585164146737819 | 0.681851327419281 | 0.4679256975650787 | 0.8071874976158142 | 0.291524002705615 | 0.2672724723815918 | 0.14811950027942652 | 0.4796373963356018 | 0.36699241196816684 | 0.41307857632637024 | 727 | 88 |
+| standing_2m | STANDING | 2.0 | 0.7411613384830117 | 0.7390885949134827 | 0.6042836308479309 | 0.8627148866653442 | 0.2046711247714539 | 0.2036099135875702 | 0.0974939733743667 | 0.3259925007820129 | 0.5364902137115578 | 0.5356476604938507 | 746 | 11 |
+| standing_3m | STANDING | 3.0 | 0.8001523620666976 | 0.8135269284248352 | 0.7566069722175598 | 0.8462411165237427 | 0.15045191958903315 | 0.1394541710615158 | 0.1120580658316612 | 0.18828167468309398 | 0.6497004424776645 | 0.6740727573633194 | 744 | 8 |
+| standing_4m | STANDING | 4.0 | 0.8225238129602256 | 0.8292367458343506 | 0.8191844701766968 | 0.8422666192054749 | 0.1294961779886949 | 0.1222337335348129 | 0.1185684651136398 | 0.14078906774520872 | 0.6930276349715307 | 0.7070030122995377 | 705 | 0 |
+| sitting_1m | SITTING | 1.0 | 0.32867417606078425 | 0.3771441876888275 | 0.09512692391872404 | 0.4710652768611908 | 0.5845142493150892 | 0.5284150242805481 | 0.43384386897087096 | 0.8270406603813172 | -0.25584007325430497 | -0.152456283569336 | 176 | 929 |
+| sitting_2m | SITTING | 2.0 | 0.3379895770016851 | 0.3611790537834167 | 0.10930786356329919 | 0.508600652217865 | 0.5655720464557948 | 0.5371032357215881 | 0.3983154296875 | 0.7706996917724611 | -0.22758246945410976 | -0.17592418193817144 | 113 | 661 |
+| sitting_3m | SITTING | 3.0 | 0.3608604644236277 | 0.216000497341156 | 0.10873885825276375 | 0.6760488152503967 | 0.4979270594041856 | 0.5580858588218689 | 0.2606315612792969 | 0.7327629923820496 | -0.13706659498055787 | -0.3420853614807129 | 340 | 636 |
+| sitting_4m | SITTING | 4.0 | 0.5594226887201987 | 0.62786865234375 | 0.2627384841442108 | 0.7723290920257568 | 0.33389442454779483 | 0.2851841598749161 | 0.1781695783138275 | 0.5653593301773071 | 0.2255282641724039 | 0.3477530479431153 | 733 | 305 |
+
+## Tracking vs posture comparison
+| segment_id | expected_pose | expected_distance_m | tracking_presence_rate | range_mae_m | extra_track_rate | tid_switch_count | posture_accuracy | dominant_wrong_pose | quality_NO_POINTS_rate | mean_geom_pts | main_failure_hypothesis |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| standing_1m | STANDING | 1.0 | 1.0 | 0.015283274178782268 | 0.0 | 0 | 0.9754601226993865 | SITTING | 0.3803680981595092 | 1.7644171779141105 | no major failure detected |
+| standing_2m | STANDING | 2.0 | 1.0 | 0.06572337672003623 | 0.0 | 0 | 1.0 | NA | 0.7371202113606341 | 0.5455746367239102 | no major failure detected |
+| standing_3m | STANDING | 3.0 | 1.0 | 0.04190108294127775 | 0.0 | 0 | 1.0 | NA | 0.9188829787234043 | 0.16356382978723405 | no major failure detected |
+| standing_4m | STANDING | 4.0 | 1.0 | 0.03260968564087591 | 0.0 | 0 | 1.0 | NA | 0.9631205673758865 | 0.06524822695035461 | no major failure detected |
+| sitting_1m | SITTING | 1.0 | 1.0 | 0.11631414744723337 | 0.0 | 0 | 0.6742081447963801 | STANDING | 0.7321266968325791 | 0.7592760180995475 | sit-vs-stand discrimination under sparse geometry |
+| sitting_2m | SITTING | 2.0 | 1.0 | 0.09127172860717588 | 0.0 | 0 | 0.7467700258397932 | STANDING | 0.8191214470284238 | 0.8617571059431525 | no major failure detected |
+| sitting_3m | SITTING | 3.0 | 1.0 | 0.2590602174732986 | 0.0 | 0 | 0.4733606557377049 | STANDING | 0.8135245901639344 | 0.8319672131147541 | sit-vs-stand discrimination under sparse geometry |
+| sitting_4m | SITTING | 4.0 | 1.0 | 0.18050125792960053 | 0.0 | 0 | 0.0 | STANDING | 0.7552986512524085 | 0.7707129094412332 | sit-vs-stand discrimination under sparse geometry |
+
+## Per-distance findings
+| expected_distance_m | tracking_presence_rate | range_mae_m | posture_accuracy |
+| --- | --- | --- | --- |
+| 1.0 | 1.0 | 0.06579871081300782 | 0.8248341337478833 |
+| 2.0 | 1.0 | 0.07849755266360606 | 0.8733850129198966 |
+| 3.0 | 1.0 | 0.15048065020728818 | 0.7366803278688525 |
+| 4.0 | 1.0 | 0.10655547178523822 | 0.5 |
+
+## Per-pose findings
+| expected_pose | tracking_presence_rate | posture_accuracy |
+| --- | --- | --- |
+| SITTING | 1.0 | 0.4735847065934696 |
+| STANDING | 1.0 | 0.9938650306748467 |
+
+## Ghost/shadow analysis
+No measurable ghost/shadow issue in this benchmark session after the latest validation changes.
+
+No rendered ghost tracks observed; suppressed suspect-track statistics were not available/parsed.
+
+| segment_id | mean_active_tracks | max_active_tracks | extra_track_rate | frames_with_extra_tracks | suspect_frames_if_available | provisional_frames_if_available | confirmed_frames_if_available | ghost_verdict | notes |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| standing_1m | 1.0 | 1.0 | 0.0 | 0 | NA | NA | NA | GOOD_NO_EXTRA_TRACKS | No extra tracks beyond expected_person_count=1; suppressed suspect-track statistics were not available/parsed. |
+| standing_2m | 1.0 | 1.0 | 0.0 | 0 | NA | NA | NA | GOOD_NO_EXTRA_TRACKS | No extra tracks beyond expected_person_count=1; suppressed suspect-track statistics were not available/parsed. |
+| standing_3m | 1.0 | 1.0 | 0.0 | 0 | NA | NA | NA | GOOD_NO_EXTRA_TRACKS | No extra tracks beyond expected_person_count=1; suppressed suspect-track statistics were not available/parsed. |
+| standing_4m | 1.0 | 1.0 | 0.0 | 0 | NA | NA | NA | GOOD_NO_EXTRA_TRACKS | No extra tracks beyond expected_person_count=1; suppressed suspect-track statistics were not available/parsed. |
+| sitting_1m | 1.0 | 1.0 | 0.0 | 0 | NA | NA | NA | GOOD_NO_EXTRA_TRACKS | No extra tracks beyond expected_person_count=1; suppressed suspect-track statistics were not available/parsed. |
+| sitting_2m | 1.0 | 1.0 | 0.0 | 0 | NA | NA | NA | GOOD_NO_EXTRA_TRACKS | No extra tracks beyond expected_person_count=1; suppressed suspect-track statistics were not available/parsed. |
+| sitting_3m | 1.0 | 1.0 | 0.0 | 0 | NA | NA | NA | GOOD_NO_EXTRA_TRACKS | No extra tracks beyond expected_person_count=1; suppressed suspect-track statistics were not available/parsed. |
+| sitting_4m | 1.0 | 1.0 | 0.0 | 0 | NA | NA | NA | GOOD_NO_EXTRA_TRACKS | No extra tracks beyond expected_person_count=1; suppressed suspect-track statistics were not available/parsed. |
+
+Legacy ghost-track candidates:
+
+_No data._
+
+## NO_POINTS / geom_pts analysis
+Point-density: NO_POINTS is common in both standing and sitting, but only sitting collapses. Therefore the primary failure is sitting-vs-standing discrimination under sparse geometry, not general tracking loss.
+
+| segment_id | expected_pose | bucket | frames | accuracy |
+| --- | --- | --- | --- | --- |
+| standing_1m | STANDING | quality_OK | 23 | 1.0 |
+| standing_1m | STANDING | LOW_POINTS | 479 | 0.9603340292275574 |
+| standing_1m | STANDING | NO_POINTS | 310 | 0.9967741935483871 |
+| standing_1m | STANDING | geom_pts_0 | 310 | 0.9967741935483871 |
+| standing_1m | STANDING | geom_pts_ge_3 | 272 | 0.9522058823529411 |
+| standing_2m | STANDING | quality_OK | 1 | 1.0 |
+| standing_2m | STANDING | LOW_POINTS | 198 | 1.0 |
+| standing_2m | STANDING | NO_POINTS | 558 | 1.0 |
+| standing_2m | STANDING | geom_pts_0 | 558 | 1.0 |
+| standing_2m | STANDING | geom_pts_ge_3 | 57 | 1.0 |
+| standing_3m | STANDING | quality_OK | 0 | NA |
+| standing_3m | STANDING | LOW_POINTS | 61 | 1.0 |
+| standing_3m | STANDING | NO_POINTS | 691 | 1.0 |
+| standing_3m | STANDING | geom_pts_0 | 691 | 1.0 |
+| standing_3m | STANDING | geom_pts_ge_3 | 19 | 1.0 |
+| standing_4m | STANDING | quality_OK | 0 | NA |
+| standing_4m | STANDING | LOW_POINTS | 26 | 1.0 |
+| standing_4m | STANDING | NO_POINTS | 679 | 1.0 |
+| standing_4m | STANDING | geom_pts_0 | 679 | 1.0 |
+| standing_4m | STANDING | geom_pts_ge_3 | 5 | 1.0 |
+
+_Showing 20 of 40 rows._
+
+## NO_POINTS effect by pose
+| expected_pose | expected_distance_m | quality_bucket | frames | accuracy | standing_rate | sitting_rate | mean_stand_prob | mean_sit_prob |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| STANDING | 1.0 | NO_POINTS | 310 | 0.9967741935483871 | 0.9967741935483871 | 0.0032258064516129032 | 0.6856253405732493 | 0.2649871954994817 |
+| STANDING | 1.0 | LOW_POINTS | 479 | 0.9603340292275574 | 0.9603340292275574 | 0.03966597077244259 | 0.64863255274694 | 0.3016885137632645 |
+| STANDING | 1.0 | HAS_POINTS | 26 | 1.0 | 1.0 | 0.0 | 0.517385754447717 | 0.42066282721666187 |
+| STANDING | 2.0 | NO_POINTS | 558 | 1.0 | 1.0 | 0.0 | 0.7438333508254806 | 0.20201719662434953 |
+| STANDING | 2.0 | LOW_POINTS | 198 | 1.0 | 1.0 | 0.0 | 0.7329806515363732 | 0.2127192485701255 |
+| STANDING | 2.0 | HAS_POINTS | 1 | 1.0 | 1.0 | 0.0 | 0.8699544668197632 | 0.0920345187187194 |
+| STANDING | 3.0 | NO_POINTS | 691 | 1.0 | 1.0 | 0.0 | 0.8064958265997394 | 0.14501049369573593 |
+| STANDING | 3.0 | LOW_POINTS | 61 | 1.0 | 1.0 | 0.0 | 0.7282944277661746 | 0.2120916784786787 |
+| STANDING | 4.0 | NO_POINTS | 679 | 1.0 | 1.0 | 0.0 | 0.8238249493101735 | 0.12818196809827312 |
+| STANDING | 4.0 | LOW_POINTS | 26 | 1.0 | 1.0 | 0.0 | 0.7885441367442791 | 0.16381727474240154 |
+| SITTING | 1.0 | NO_POINTS | 809 | 0.6847960444993819 | 0.30902348578491967 | 0.6847960444993819 | 0.36356976609423813 | 0.5497897584889226 |
+| SITTING | 1.0 | LOW_POINTS | 246 | 0.7235772357723578 | 0.25203252032520324 | 0.7235772357723578 | 0.2640246935671468 | 0.6620069146156311 |
+| SITTING | 1.0 | HAS_POINTS | 50 | 0.26 | 0.1 | 0.26 | 0.08213898318819698 | 0.7650925976037979 |
+| SITTING | 2.0 | NO_POINTS | 634 | 0.8123028391167192 | 0.16246056782334384 | 0.8123028391167192 | 0.3773838200985398 | 0.5253395183417323 |
+| SITTING | 2.0 | LOW_POINTS | 77 | 0.44155844155844154 | 0.45454545454545453 | 0.44155844155844154 | 0.232144987993789 | 0.6833005752656367 |
+| SITTING | 2.0 | HAS_POINTS | 63 | 0.4603174603174603 | 0.06349206349206349 | 0.4603174603174603 | 0.07091153303663879 | 0.8265613497249664 |
+| SITTING | 3.0 | NO_POINTS | 794 | 0.5264483627204031 | 0.4634760705289673 | 0.5264483627204031 | 0.38648292077916396 | 0.46298250238826355 |
+| SITTING | 3.0 | LOW_POINTS | 128 | 0.2578125 | 0.6640625 | 0.2578125 | 0.29795032378751785 | 0.6078586080111563 |
+| SITTING | 3.0 | HAS_POINTS | 54 | 0.2037037037037037 | 0.37037037037037035 | 0.2037037037037037 | 0.13323579137041058 | 0.75116298623659 |
+| SITTING | 4.0 | NO_POINTS | 784 | 0.0 | 0.9770408163265306 | 0.0 | 0.5913398289691885 | 0.3195064693774876 |
+
+_Showing 20 of 22 rows._
+
+## Moving false-positive analysis
+| segment_id | expected_pose | expected_distance_m | moving_rate |
+| --- | --- | --- | --- |
+| standing_1m | STANDING | 1.0 | 0.0 |
+| standing_2m | STANDING | 2.0 | 0.0 |
+| standing_3m | STANDING | 3.0 | 0.0 |
+| standing_4m | STANDING | 4.0 | 0.0 |
+| sitting_1m | SITTING | 1.0 | 0.03891402714932127 |
+| sitting_2m | SITTING | 2.0 | 0.04909560723514212 |
+| sitting_3m | SITTING | 3.0 | 0.042008196721311473 |
+| sitting_4m | SITTING | 4.0 | 0.0 |
+
+## Sitting-vs-standing confusion analysis
+| segment_id | expected_pose | dominant_display_pose | dominant_wrong_pose | standing_rate | sitting_rate | accuracy |
+| --- | --- | --- | --- | --- | --- | --- |
+| standing_1m | STANDING | STANDING | SITTING | 0.9754601226993865 | 0.024539877300613498 | 0.9754601226993865 |
+| standing_2m | STANDING | STANDING | NA | 1.0 | 0.0 | 1.0 |
+| standing_3m | STANDING | STANDING | NA | 1.0 | 0.0 | 1.0 |
+| standing_4m | STANDING | STANDING | NA | 1.0 | 0.0 | 1.0 |
+| sitting_1m | SITTING | SITTING | STANDING | 0.2868778280542986 | 0.6742081447963801 | 0.6742081447963801 |
+| sitting_2m | SITTING | SITTING | STANDING | 0.1834625322997416 | 0.7467700258397932 | 0.7467700258397932 |
+| sitting_3m | SITTING | STANDING | STANDING | 0.48463114754098363 | 0.4733606557377049 | 0.4733606557377049 |
+| sitting_4m | SITTING | STANDING | STANDING | 0.9499036608863198 | 0.0 | 0.0 |
+
+## RGB sanity check if available
+RGB logs are used as supplementary sanity checks only; mmWave tracking and posture metrics do not require RGB.
+
+## Key plots
+- `plots/timeline_range_by_track.png`
+- `plots/timeline_active_track_count.png`
+- `plots/timeline_display_pose.png`
+- `plots/timeline_quality_geom_pts.png`
+- `plots/timeline_stand_sit_probs.png`
+- `plots/stand_vs_sit_probability_by_segment.png`
+- `plots/stand_minus_sit_margin_by_segment.png`
+- `plots/sitting_segments_stand_sit_prob_timeline.png`
+- `plots/tracking_presence_by_distance.png`
+- `plots/range_error_by_distance.png`
+- `plots/range_jitter_by_distance.png`
+- `plots/ghost_rate_by_distance.png`
+- `plots/tid_switches_by_distance.png`
+- `plots/xy_position_scatter_by_segment.png`
+- `plots/posture_accuracy_by_distance.png`
+- `plots/posture_confusion_matrix.png`
+- `plots/pose_distribution_by_segment.png`
+- `plots/posture_accuracy_vs_geom_pts.png`
+- `plots/posture_accuracy_by_quality.png`
+- `plots/moving_false_positive_rate.png`
+- `plots/false_falling_rate_by_segment.png`
+- `plots/time_to_stable_correct_by_segment.png`
+- `plots/tracking_vs_posture_summary.png`
+- `plots/failure_mode_heatmap.png`
+
+## Ranked issues
+### Priority 1
+Issue: sitting_4m is classified as STANDING instead of SITTING.
+Evidence: accuracy=0.000, standing_rate=0.950, sitting_rate=0.000, tracking_presence=1.000, extra_track_rate=0.000.
+Likely cause: Sitting-vs-standing discrimination fails at far range under sparse/NO_POINTS geometry, while tracking remains continuous.
+Recommended fix: Add sitting-specific geometry/height evidence or a range-aware sitting gate; compare the current cfg against a static-retention/fine-motion cfg before tuning thresholds.
+
+### Priority 2
+Issue: sitting_3m is unstable between STANDING and SITTING.
+Evidence: accuracy=0.473, standing_rate=0.485, sitting_rate=0.473, pose_switch_count=7.000.
+Likely cause: Stand/sit evidence is ambiguous enough that display output oscillates or favors STANDING.
+Recommended fix: Inspect the stand_prob/sit_prob timeline and add a confidence-margin plus temporal sitting confirmation test.
+
+### Priority 3
+Issue: sitting_1m/sitting_2m are partially correct but still often drift toward STANDING.
+Evidence: sitting_1m: accuracy=0.674, dominant_wrong=STANDING; sitting_2m: accuracy=0.747, dominant_wrong=STANDING
+Likely cause: Sitting threshold/hysteresis is insufficient even where range tracking is good.
+Recommended fix: Tune the sitting gate after solving the 3m/4m evidence problem, so near-range tuning does not hide the far-range failure.
+
+
+## Recommended next fixes
+1. Add sitting-specific geometry/height evidence or a range-aware sitting gate; compare the current cfg against a static-retention/fine-motion cfg before tuning thresholds.
+2. Inspect the stand_prob/sit_prob timeline and add a confidence-margin plus temporal sitting confirmation test.
+3. Tune the sitting gate after solving the 3m/4m evidence problem, so near-range tuning does not hide the far-range failure.
+
+## Next experiment plan
+Experiment A: Verify auto segments manually with RGB video.
+Experiment B: Repeat sitting-only 2m/3m/4m with the original cfg and a static-retention/fine-motion cfg.
+Experiment C: Compare geom_pts, NO_POINTS rate, sit_prob, and stand_prob between configs.
+Experiment D: Only after the point/geometry comparison, tune sit-vs-stand gates.
+
+`staticRangeAngleCfg -1 0 8 8` disables static processing. If seated targets remain sparse, compare against TI `ODS_6m_staticRetention.cfg` / fineMotionCfg variants before changing posture thresholds.
+</pre></body></html>

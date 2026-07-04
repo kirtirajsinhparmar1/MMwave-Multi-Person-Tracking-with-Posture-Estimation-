@@ -8,7 +8,8 @@
 The original TI file was preserved and was not modified:
   
 ```text
-C:\Users\UBESC\Desktop\radar_toolbox_4_00_00_05\source\ti\examples\Industrial_and_Personal_Electronics\People_Tracking\3D_People_Tracking\chirp_configs\ODS_6m_default.cfg
+C:\Users\UBESC\Desktop\radar_toolbox_4_00_00_05\source\ti\examples\Industrial_and_
+Personal_Electronics\People_Tracking\3D_People_Tracking\chirp_configs\ODS_6m_default.cfg
 ```
 
 The posture-tuned copy currently keeps the original numeric cfg values and adds comments around posture-sensitive tracker and mount fields. This is intentional: the first useful test is an A/B run with the same radar command values but explicit posture logging and sensor-mount awareness.

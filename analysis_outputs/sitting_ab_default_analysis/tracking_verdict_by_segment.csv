@@ -1,0 +1,4 @@
+segment_id,expected_pose,expected_distance_m,tracking_presence_rate,range_mae_m,dropout_rate,extra_track_rate,tid_switch_count,tracking_score,tracking_verdict,tracking_issue_reason
+sitting_2m,SITTING,2.0,1.0,0.05339778642142885,0.0,0.0,0,97.6826399208135,GOOD,"Presence is high with no meaningful dropout, ID-switch, or extra-track issue."
+sitting_3m,SITTING,3.0,1.0,0.20314853611004166,0.0,0.0,0,92.26788938582203,MINOR_RANGE_BIAS,"Tracking is continuous, but range MAE is a minor calibration/bias issue."
+sitting_4m,SITTING,4.0,1.0,0.5581436139050417,0.0,0.0,0,81.04640965237395,FAILED,Range error or tracking score crosses the tracking failure threshold.
