@@ -385,6 +385,24 @@ def parse_args() -> argparse.Namespace:
         help="Write pose_predictions_ui.csv and pose_ui_metadata.json under --out.",
     )
     parser.add_argument(
+        "--pose-log-associated-points",
+        action="store_true",
+        default=False,
+        help="Write per-frame per-TID associated point rows to mmwave_associated_points.csv under --out.",
+    )
+    parser.add_argument(
+        "--pose-associated-points-max-per-tid",
+        type=int,
+        default=64,
+        help="Maximum associated points to write per TID per frame when associated point logging is enabled.",
+    )
+    parser.add_argument(
+        "--pose-associated-points-format",
+        choices=["csv"],
+        default="csv",
+        help="Associated point log format. CSV is currently supported.",
+    )
+    parser.add_argument(
         "--allow-missing-scaler",
         action="store_true",
         help="Allow a normalized pose model to run without scaler files. Debug use only.",
@@ -1036,6 +1054,12 @@ def parse_args() -> argparse.Namespace:
         args.enable_rgb_panel = True
     if (args.combined_log or args.combined_status_panel) and args.session_id is None:
         args.session_id = datetime.now().strftime("session_%Y%m%d_%H%M%S")
+    if args.pose_log_associated_points and not args.enable_pose:
+        print(
+            "[ti-style-warning] --pose-log-associated-points requires --enable-pose; "
+            "associated point logging will stay disabled.",
+            flush=True,
+        )
     return args
 
 
@@ -1315,6 +1339,11 @@ def create_combined_logger(args: argparse.Namespace, debug: bool):
             "mmwave_data_port": args.data,
             "mmwave_cfg_path": str(resolve_project_path(args.cfg)),
             "mmwave_pose_enabled": bool(args.enable_pose),
+            "mmwave_pose_log_associated_points": bool(args.pose_log_associated_points),
+            "mmwave_pose_associated_points_max_per_tid": (
+                args.pose_associated_points_max_per_tid
+            ),
+            "mmwave_pose_associated_points_format": args.pose_associated_points_format,
             "mmwave_human_models_enabled": bool(args.pose_human_models),
             "mmwave_human_model_stale_frames": args.pose_human_model_stale_frames,
             "mmwave_human_model_ghost_distance_m": args.pose_human_model_ghost_distance_m,
@@ -2094,6 +2123,12 @@ def create_pose_manager_before_qt(args: argparse.Namespace, debug: bool):
             human_model_target_lying_length=args.pose_human_model_target_lying_length,
             debug=pose_debug,
             log_dir=out_dir if args.pose_log else None,
+            associated_points_log_dir=(
+                out_dir if args.pose_log_associated_points else None
+            ),
+            associated_points_session_id=args.session_id or out_dir.name,
+            associated_points_max_per_tid=args.pose_associated_points_max_per_tid,
+            associated_points_format=args.pose_associated_points_format,
             cfg_path=resolve_project_path(args.cfg),
             cli_port=args.cli,
             data_port=args.data,
@@ -2119,6 +2154,11 @@ def create_pose_manager_before_qt(args: argparse.Namespace, debug: bool):
     debug_print(pose_debug, f"pose model loaded before Qt: {model_path}")
     if args.pose_log:
         debug_print(pose_debug, f"pose logging directory: {out_dir}")
+    if args.pose_log_associated_points:
+        debug_print(
+            pose_debug,
+            f"associated point logging file: {out_dir / 'mmwave_associated_points.csv'}",
+        )
     return pose_manager
 
 

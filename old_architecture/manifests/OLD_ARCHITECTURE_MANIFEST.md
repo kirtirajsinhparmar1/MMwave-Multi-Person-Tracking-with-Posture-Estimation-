@@ -1,0 +1,31 @@
+# Old Posture Architecture Manifest
+
+- timestamp_utc: 2026-07-06T22:55:48+00:00
+- git_commit: bf06b1cb6a455fad28c0d3bbd64093fa913891ea
+- current_branch: integration/rgb-side-by-side-human-models
+- old_onnx_model_path: C:\Users\UBESC\Desktop\Combined MMwave and RGB\mmwave_pose_ui_4ec2b00\model_experiments\outputs\ti_4class_clean_recording_robust_1600_fast\ti_pose_model.onnx
+- old_model_input_shape: [1, 176]
+- old_model_output_shape: [1, 4]
+- old_model_classes: STANDING;SITTING;LYING;FALLING
+
+| kind | status | size_bytes | source_path | destination_path |
+| --- | --- | ---: | --- | --- |
+| code | copied | 161664 | `C:\Users\UBESC\Desktop\Combined MMwave and RGB\mmwave_pose_ui_4ec2b00\ti_style_pose_overlay.py` | `C:\Users\UBESC\Desktop\Combined MMwave and RGB\mmwave_pose_ui_4ec2b00\old_architecture\code_snapshot\ti_style_pose_overlay.py` |
+| code | copied | 7803 | `C:\Users\UBESC\Desktop\Combined MMwave and RGB\mmwave_pose_ui_4ec2b00\pose_feature_extractor.py` | `C:\Users\UBESC\Desktop\Combined MMwave and RGB\mmwave_pose_ui_4ec2b00\old_architecture\code_snapshot\pose_feature_extractor.py` |
+| code | copied | 11972 | `C:\Users\UBESC\Desktop\Combined MMwave and RGB\mmwave_pose_ui_4ec2b00\pose_model_runtime.py` | `C:\Users\UBESC\Desktop\Combined MMwave and RGB\mmwave_pose_ui_4ec2b00\old_architecture\code_snapshot\pose_model_runtime.py` |
+| code | copied | 96169 | `C:\Users\UBESC\Desktop\Combined MMwave and RGB\mmwave_pose_ui_4ec2b00\run_ti_style_visualizer.py` | `C:\Users\UBESC\Desktop\Combined MMwave and RGB\mmwave_pose_ui_4ec2b00\old_architecture\code_snapshot\run_ti_style_visualizer.py` |
+| code | copied | 19213 | `C:\Users\UBESC\Desktop\Combined MMwave and RGB\mmwave_pose_ui_4ec2b00\human_model_renderer.py` | `C:\Users\UBESC\Desktop\Combined MMwave and RGB\mmwave_pose_ui_4ec2b00\old_architecture\code_snapshot\human_model_renderer.py` |
+| code | copied | 6808 | `C:\Users\UBESC\Desktop\Combined MMwave and RGB\mmwave_pose_ui_4ec2b00\pose_data_logger.py` | `C:\Users\UBESC\Desktop\Combined MMwave and RGB\mmwave_pose_ui_4ec2b00\old_architecture\code_snapshot\pose_data_logger.py` |
+| code | copied | 22416 | `C:\Users\UBESC\Desktop\Combined MMwave and RGB\mmwave_pose_ui_4ec2b00\analysis\replay_posture_decision_fix.py` | `C:\Users\UBESC\Desktop\Combined MMwave and RGB\mmwave_pose_ui_4ec2b00\old_architecture\code_snapshot\analysis\replay_posture_decision_fix.py` |
+| code | copied | 119942 | `C:\Users\UBESC\Desktop\Combined MMwave and RGB\mmwave_pose_ui_4ec2b00\analysis\analyze_distance_posture_session.py` | `C:\Users\UBESC\Desktop\Combined MMwave and RGB\mmwave_pose_ui_4ec2b00\old_architecture\code_snapshot\analysis\analyze_distance_posture_session.py` |
+| artifact | copied | 62750 | `C:\Users\UBESC\Desktop\Combined MMwave and RGB\mmwave_pose_ui_4ec2b00\model_experiments\outputs\ti_4class_clean_recording_robust_1600_fast\ti_pose_model.onnx` | `C:\Users\UBESC\Desktop\Combined MMwave and RGB\mmwave_pose_ui_4ec2b00\old_architecture\model_artifacts\ti_pose_model.onnx` |
+| artifact | copied | 431 | `C:\Users\UBESC\Desktop\Combined MMwave and RGB\mmwave_pose_ui_4ec2b00\model_experiments\outputs\ti_4class_clean_recording_robust_1600_fast\augmentation_config.json` | `C:\Users\UBESC\Desktop\Combined MMwave and RGB\mmwave_pose_ui_4ec2b00\old_architecture\model_artifacts\augmentation_config.json` |
+| artifact | copied | 12098 | `C:\Users\UBESC\Desktop\Combined MMwave and RGB\mmwave_pose_ui_4ec2b00\model_experiments\outputs\ti_4class_clean_recording_robust_1600_fast\feature_scaler.json` | `C:\Users\UBESC\Desktop\Combined MMwave and RGB\mmwave_pose_ui_4ec2b00\old_architecture\model_artifacts\feature_scaler.json` |
+| artifact | copied | 17545 | `C:\Users\UBESC\Desktop\Combined MMwave and RGB\mmwave_pose_ui_4ec2b00\model_experiments\outputs\ti_4class_clean_recording_robust_1600_fast\metrics.json` | `C:\Users\UBESC\Desktop\Combined MMwave and RGB\mmwave_pose_ui_4ec2b00\old_architecture\model_artifacts\metrics.json` |
+| artifact | copied | 3764 | `C:\Users\UBESC\Desktop\Combined MMwave and RGB\mmwave_pose_ui_4ec2b00\model_experiments\outputs\ti_4class_clean_recording_robust_1600_fast\model_metadata.json` | `C:\Users\UBESC\Desktop\Combined MMwave and RGB\mmwave_pose_ui_4ec2b00\old_architecture\model_artifacts\model_metadata.json` |
+| artifact | copied | 1134 | `C:\Users\UBESC\Desktop\Combined MMwave and RGB\mmwave_pose_ui_4ec2b00\model_experiments\outputs\ti_4class_clean_recording_robust_1600_fast\plot_manifest.json` | `C:\Users\UBESC\Desktop\Combined MMwave and RGB\mmwave_pose_ui_4ec2b00\old_architecture\model_artifacts\plot_manifest.json` |
+| artifact | copied | 125 | `C:\Users\UBESC\Desktop\Combined MMwave and RGB\mmwave_pose_ui_4ec2b00\model_experiments\outputs\ti_4class_clean_recording_robust_1600_fast\confusion_matrix.csv` | `C:\Users\UBESC\Desktop\Combined MMwave and RGB\mmwave_pose_ui_4ec2b00\old_architecture\model_artifacts\confusion_matrix.csv` |
+| artifact | copied | 303 | `C:\Users\UBESC\Desktop\Combined MMwave and RGB\mmwave_pose_ui_4ec2b00\model_experiments\outputs\ti_4class_clean_recording_robust_1600_fast\per_class_metrics.csv` | `C:\Users\UBESC\Desktop\Combined MMwave and RGB\mmwave_pose_ui_4ec2b00\old_architecture\model_artifacts\per_class_metrics.csv` |
+| artifact | copied | 12801 | `C:\Users\UBESC\Desktop\Combined MMwave and RGB\mmwave_pose_ui_4ec2b00\model_experiments\outputs\ti_4class_clean_recording_robust_1600_fast\sample_predictions.csv` | `C:\Users\UBESC\Desktop\Combined MMwave and RGB\mmwave_pose_ui_4ec2b00\old_architecture\model_artifacts\sample_predictions.csv` |
+| artifact | copied | 347052 | `C:\Users\UBESC\Desktop\Combined MMwave and RGB\mmwave_pose_ui_4ec2b00\model_experiments\outputs\ti_4class_clean_recording_robust_1600_fast\train_history.csv` | `C:\Users\UBESC\Desktop\Combined MMwave and RGB\mmwave_pose_ui_4ec2b00\old_architecture\model_artifacts\train_history.csv` |
+| artifact | copied | 444 | `C:\Users\UBESC\Desktop\Combined MMwave and RGB\mmwave_pose_ui_4ec2b00\model_experiments\outputs\ti_4class_clean_recording_robust_1600_fast\classification_report.txt` | `C:\Users\UBESC\Desktop\Combined MMwave and RGB\mmwave_pose_ui_4ec2b00\old_architecture\model_artifacts\classification_report.txt` |

@@ -21,6 +21,7 @@ from typing import Any
 
 import numpy as np
 
+from associated_point_logger import AssociatedPointCloudLogger
 import pose_feature_extractor as features
 from pose_model_runtime import CLASS_NAMES as DEFAULT_CLASS_NAMES, PoseModelRuntime, PoseSmoother
 
@@ -215,6 +216,10 @@ class TiStylePoseManager:
         human_model_target_lying_length: float = 1.70,
         debug: bool = False,
         log_dir=None,
+        associated_points_log_dir=None,
+        associated_points_session_id: str | None = None,
+        associated_points_max_per_tid: int = 64,
+        associated_points_format: str = "csv",
         cfg_path=None,
         cli_port: str | None = None,
         data_port: str | None = None,
@@ -445,10 +450,33 @@ class TiStylePoseManager:
         self._log_file = None
         self._log_writer = None
         self._log_path: Path | None = None
+        self._associated_point_logger = None
 
         features.reset_all()
         if log_dir is not None:
             self._init_logging(log_dir, cfg_path, cli_port, data_port)
+        if associated_points_log_dir is not None:
+            try:
+                self._associated_point_logger = AssociatedPointCloudLogger(
+                    associated_points_log_dir,
+                    session_id=associated_points_session_id,
+                    max_points_per_tid=associated_points_max_per_tid,
+                    log_format=associated_points_format,
+                    ground_z=self.ground_z,
+                    debug=self.debug,
+                )
+                if self.debug:
+                    print(
+                        "[associated-point-log] writing "
+                        f"{self._associated_point_logger.path}",
+                        flush=True,
+                    )
+            except Exception as exc:
+                self._associated_point_logger = None
+                print(
+                    f"[associated-point-log] disabled; logger initialization failed: {exc}",
+                    flush=True,
+                )
 
     def process_output_dict(self, output_dict: dict[str, Any] | None) -> dict[int, dict]:
         if not isinstance(output_dict, dict):
@@ -466,6 +494,7 @@ class TiStylePoseManager:
         }
 
         results: dict[int, dict] = {}
+        associations: dict[int, dict[str, Any]] = {}
         seen_tids: set[int] = set()
         for track in tracks:
             if len(track) < 4:
@@ -503,6 +532,7 @@ class TiStylePoseManager:
                 tracks_total=len(tracks),
             )
             associated_points = assoc["points"]
+            associations[tid] = assoc
             geometry = self._point_geometry(
                 associated_points=associated_points,
                 target=target,
@@ -822,6 +852,7 @@ class TiStylePoseManager:
         self._update_human_model_validation(frame_num, results, seen_tids)
         self.latest_results = results
         self._write_log_rows(results)
+        self._write_associated_point_rows(frame_num, points, results, associations)
         self._debug_print(frame_num, len(tracks), results)
         return results
 
@@ -829,6 +860,31 @@ class TiStylePoseManager:
         if self._log_file is not None:
             self._log_file.close()
             self._log_file = None
+        if self._associated_point_logger is not None:
+            self._associated_point_logger.close()
+            self._associated_point_logger = None
+
+    def _write_associated_point_rows(
+        self,
+        frame_num: int,
+        points: list[list[float]],
+        results: dict[int, dict],
+        associations: dict[int, dict[str, Any]],
+    ) -> None:
+        if self._associated_point_logger is None:
+            return
+        try:
+            self._associated_point_logger.log_frame(
+                frame_num=frame_num,
+                timestamp_s=time.time(),
+                points=points,
+                results=results,
+                associations=associations,
+                ground_z=self.ground_z,
+            )
+        except Exception as exc:
+            if self.debug:
+                print(f"[associated-point-log] frame write failed: {exc}", flush=True)
 
     def reset_tid(self, tid: int) -> None:
         tid_int = int(tid)
@@ -1555,6 +1611,7 @@ class TiStylePoseManager:
             "z": _float_at(point, 2),
             "doppler": _float_at(point, 3),
             "snr": _float_at(point, 4),
+            "noise": _float_at(point, 5),
             "track_index": int(track_index),
         }
 
