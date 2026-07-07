@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import atexit
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -48,6 +49,9 @@ DEFAULT_RGB_REPO = (
     / "Human-Falling-Detect-Tracks"
 )
 DEFAULT_LOG_ROOT = REPO_ROOT / "logs"
+ESC_LAB_LOGO_SOURCE = Path(r"C:\Users\UBESC\Downloads\embedded_sensing_and_computing_lab_logo.jpg")
+ESC_LAB_LOGO_PATH = PROJECT_DIR / "ui_assets" / "embedded_sensing_and_computing_lab_logo.jpg"
+ESC_LAB_TITLE = "ESC LAB Multi-Person mmWave + RGB Posture Tracking"
 
 
 def parse_args() -> argparse.Namespace:
@@ -71,6 +75,21 @@ def parse_args() -> argparse.Namespace:
         "--debug",
         action="store_true",
         help="Print vendored paths, defaults, parser frames, and plot update calls.",
+    )
+    parser.add_argument(
+        "--ui-demo-layout",
+        action="store_true",
+        help="Use the ESC LAB demo dashboard layout instead of the legacy TI layout.",
+    )
+    parser.add_argument(
+        "--ui-sidebar-collapsed",
+        action="store_true",
+        help="Start the demo dashboard with the left controls sidebar collapsed.",
+    )
+    parser.add_argument(
+        "--ui-show-debug-status",
+        action="store_true",
+        help="Show detailed RGB/mmWave status text in the demo UI.",
     )
     parser.add_argument(
         "--disable-gl-text",
@@ -1379,6 +1398,9 @@ def create_combined_logger(args: argparse.Namespace, debug: bool):
             "rgb_prefer_external": bool(args.rgb_prefer_external),
             "rgb_camera_selected": rgb_camera_info,
             "combined_status_panel": bool(args.combined_status_panel),
+            "ui_layout": "demo" if getattr(args, "ui_demo_layout", False) else "legacy",
+            "sidebar_initial_collapsed": bool(getattr(args, "ui_sidebar_collapsed", False)),
+            "branding": "ESC_LAB",
             "rgb_log_keypoints": bool(args.rgb_log_keypoints),
             "rgb_log_frames": bool(args.rgb_log_frames),
             "rgb_record_video": bool(args.rgb_record_video),
@@ -2256,6 +2278,348 @@ def resolve_rgb_video_output(args: argparse.Namespace, combined_logger) -> Path 
     return PROJECT_DIR / "logs" / f"rgb_annotated_{timestamp}.mp4"
 
 
+def ensure_esc_lab_logo(debug: bool = False) -> Path | None:
+    try:
+        ESC_LAB_LOGO_PATH.parent.mkdir(parents=True, exist_ok=True)
+        if ESC_LAB_LOGO_SOURCE.exists():
+            should_copy = not ESC_LAB_LOGO_PATH.exists()
+            if not should_copy:
+                should_copy = (
+                    ESC_LAB_LOGO_SOURCE.stat().st_mtime
+                    > ESC_LAB_LOGO_PATH.stat().st_mtime
+                )
+            if should_copy:
+                shutil.copy2(ESC_LAB_LOGO_SOURCE, ESC_LAB_LOGO_PATH)
+        return ESC_LAB_LOGO_PATH if ESC_LAB_LOGO_PATH.exists() else None
+    except Exception as exc:
+        debug_print(debug, f"ESC LAB logo setup skipped: {exc}")
+        return None
+
+
+def apply_esc_lab_branding(window, debug: bool = False) -> Path | None:
+    logo_path = ensure_esc_lab_logo(debug)
+    try:
+        from PySide2.QtGui import QIcon
+
+        window.setWindowTitle(ESC_LAB_TITLE)
+        if logo_path is not None:
+            window.setWindowIcon(QIcon(str(logo_path)))
+    except Exception as exc:
+        debug_print(debug, f"ESC LAB window branding skipped: {exc}")
+    return logo_path
+
+
+def _widget_title(widget) -> str:
+    try:
+        return str(widget.title())
+    except Exception:
+        return ""
+
+
+def _collect_left_control_widgets(window) -> list:
+    widgets: list[tuple[int, object]] = []
+    seen: set[int] = set()
+
+    def add_widget(row: int, widget) -> None:
+        if widget is None or widget is getattr(window, "demoTabs", None):
+            return
+        marker = id(widget)
+        if marker in seen:
+            return
+        seen.add(marker)
+        widgets.append((row, widget))
+
+    layout = getattr(window, "gridLayout", None)
+    if layout is not None:
+        for index in range(layout.count()):
+            item = layout.itemAt(index)
+            if item is None:
+                continue
+            widget = item.widget()
+            if widget is None:
+                continue
+            try:
+                row, column, _row_span, _column_span = layout.getItemPosition(index)
+            except Exception:
+                row, column = index, 0
+            title = _widget_title(widget)
+            if column == 0 or title in {"Connect to COM Ports", "Configuration", "Replay"}:
+                add_widget(row, widget)
+
+    for row, attr_name in enumerate(("comBox", "configBox", "replayBox"), start=100):
+        add_widget(row, getattr(window, attr_name, None))
+
+    return [widget for _row, widget in sorted(widgets, key=lambda item: item[0])]
+
+
+def _remove_widget_from_layouts(window, widget) -> None:
+    if widget is None:
+        return
+    layout = getattr(window, "gridLayout", None)
+    if layout is not None:
+        try:
+            layout.removeWidget(widget)
+        except Exception:
+            pass
+    parent = widget.parentWidget()
+    if parent is not None and parent.layout() is not None:
+        try:
+            parent.layout().removeWidget(widget)
+        except Exception:
+            pass
+
+
+def apply_demo_dashboard_layout(window, rgb_panel, args: argparse.Namespace, debug: bool = False) -> None:
+    if not args.ui_demo_layout:
+        return
+
+    try:
+        from PySide2.QtCore import Qt
+        from PySide2.QtGui import QKeySequence, QPixmap
+        from PySide2.QtWidgets import (
+            QFrame,
+            QHBoxLayout,
+            QLabel,
+            QPushButton,
+            QScrollArea,
+            QShortcut,
+            QSizePolicy,
+            QSplitter,
+            QVBoxLayout,
+            QWidget,
+        )
+    except Exception as exc:
+        debug_print(debug, f"demo dashboard layout unavailable: {exc}")
+        return
+
+    logo_path = apply_esc_lab_branding(window, debug)
+    control_widgets = _collect_left_control_widgets(window)
+    legacy_central = None
+    try:
+        legacy_central = window.takeCentralWidget()
+        if legacy_central is not None:
+            legacy_central.hide()
+    except Exception as exc:
+        debug_print(debug, f"legacy central widget detach skipped: {exc}")
+
+    root = QWidget()
+    root.setObjectName("escDemoRoot")
+    root_layout = QVBoxLayout(root)
+    root_layout.setContentsMargins(12, 10, 12, 12)
+    root_layout.setSpacing(10)
+
+    header = QFrame()
+    header.setObjectName("escHeader")
+    header_layout = QHBoxLayout(header)
+    header_layout.setContentsMargins(16, 8, 16, 8)
+    header_layout.setSpacing(14)
+
+    logo_label = QLabel("ESC LAB")
+    logo_label.setObjectName("escLogoFallback")
+    logo_label.setAlignment(Qt.AlignCenter)
+    logo_label.setMinimumWidth(86)
+    if logo_path is not None:
+        pixmap = QPixmap(str(logo_path))
+        if not pixmap.isNull():
+            logo_label.setText("")
+            logo_label.setPixmap(pixmap.scaledToHeight(48, Qt.SmoothTransformation))
+    header_layout.addWidget(logo_label, 0, Qt.AlignVCenter)
+
+    title_stack = QWidget()
+    title_layout = QVBoxLayout(title_stack)
+    title_layout.setContentsMargins(0, 0, 0, 0)
+    title_layout.setSpacing(1)
+    title_label = QLabel(ESC_LAB_TITLE)
+    title_label.setObjectName("escHeaderTitle")
+    subtitle_label = QLabel("Embedded Sensing and Computing Lab")
+    subtitle_label.setObjectName("escHeaderSubtitle")
+    title_layout.addWidget(title_label)
+    title_layout.addWidget(subtitle_label)
+    header_layout.addWidget(title_stack, 1)
+    root_layout.addWidget(header)
+
+    splitter = QSplitter(Qt.Horizontal)
+    splitter.setChildrenCollapsible(False)
+    root_layout.addWidget(splitter, 1)
+
+    sidebar = QFrame()
+    sidebar.setObjectName("escSidebar")
+    sidebar.setMinimumWidth(280)
+    sidebar.setMaximumWidth(420)
+    sidebar_layout = QHBoxLayout(sidebar)
+    sidebar_layout.setContentsMargins(0, 0, 0, 0)
+    sidebar_layout.setSpacing(0)
+
+    toggle_button = QPushButton("<")
+    toggle_button.setObjectName("escSidebarToggle")
+    toggle_button.setToolTip("Toggle controls sidebar (Ctrl+B)")
+    toggle_button.setFixedWidth(34)
+    toggle_button.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
+    sidebar_layout.addWidget(toggle_button)
+
+    scroll = QScrollArea()
+    scroll.setObjectName("escSidebarScroll")
+    scroll.setWidgetResizable(True)
+    scroll.setFrameShape(QFrame.NoFrame)
+    sidebar_content = QWidget()
+    sidebar_content.setObjectName("escSidebarContent")
+    sidebar_content_layout = QVBoxLayout(sidebar_content)
+    sidebar_content_layout.setContentsMargins(10, 10, 10, 10)
+    sidebar_content_layout.setSpacing(10)
+    for widget in control_widgets:
+        _remove_widget_from_layouts(window, widget)
+        sidebar_content_layout.addWidget(widget)
+    sidebar_content_layout.addStretch(1)
+    scroll.setWidget(sidebar_content)
+    sidebar_layout.addWidget(scroll, 1)
+
+    center_card = QFrame()
+    center_card.setObjectName("escCenterCard")
+    center_layout = QVBoxLayout(center_card)
+    center_layout.setContentsMargins(8, 8, 8, 8)
+    center_layout.setSpacing(6)
+    center_title = QLabel("mmWave 3D View")
+    center_title.setObjectName("escCardTitle")
+    center_layout.addWidget(center_title)
+    _remove_widget_from_layouts(window, window.demoTabs)
+    center_layout.addWidget(window.demoTabs, 1)
+
+    right_column = QWidget()
+    right_column.setObjectName("escRightColumn")
+    right_column.setMinimumWidth(360)
+    right_column.setMaximumWidth(500)
+    right_layout = QVBoxLayout(right_column)
+    right_layout.setContentsMargins(0, 0, 0, 0)
+    right_layout.setSpacing(10)
+
+    rgb_card = QFrame()
+    rgb_card.setObjectName("escCard")
+    rgb_layout = QVBoxLayout(rgb_card)
+    rgb_layout.setContentsMargins(12, 10, 12, 12)
+    rgb_layout.setSpacing(8)
+    rgb_title = QLabel("RGB Camera")
+    rgb_title.setObjectName("escCardTitle")
+    rgb_layout.addWidget(rgb_title)
+    if rgb_panel is not None:
+        _remove_widget_from_layouts(window, rgb_panel)
+        if hasattr(rgb_panel, "title_label"):
+            rgb_panel.title_label.setVisible(False)
+        rgb_layout.addWidget(rgb_panel, 1)
+    else:
+        rgb_placeholder = QLabel("RGB panel disabled")
+        rgb_placeholder.setObjectName("escPlaceholder")
+        rgb_placeholder.setAlignment(Qt.AlignCenter)
+        rgb_layout.addWidget(rgb_placeholder, 1)
+    rgb_card.setMinimumHeight(300)
+    rgb_card.setMaximumHeight(380)
+    right_layout.addWidget(rgb_card, 0)
+
+    analysis_card = QFrame()
+    analysis_card.setObjectName("escCard")
+    analysis_layout = QVBoxLayout(analysis_card)
+    analysis_layout.setContentsMargins(12, 10, 12, 12)
+    analysis_layout.setSpacing(8)
+    analysis_title = QLabel("Analysis")
+    analysis_title.setObjectName("escCardTitle")
+    analysis_placeholder = QLabel("Distance / posture / tracking diagnostics will appear here.")
+    analysis_placeholder.setObjectName("escPlaceholder")
+    analysis_placeholder.setAlignment(Qt.AlignCenter)
+    analysis_placeholder.setWordWrap(True)
+    analysis_layout.addWidget(analysis_title)
+    analysis_layout.addWidget(analysis_placeholder, 1)
+    right_layout.addWidget(analysis_card, 1)
+
+    splitter.addWidget(sidebar)
+    splitter.addWidget(center_card)
+    splitter.addWidget(right_column)
+    splitter.setStretchFactor(0, 0)
+    splitter.setStretchFactor(1, 1)
+    splitter.setStretchFactor(2, 0)
+    splitter.setSizes([320, 950, 420])
+
+    def set_sidebar_collapsed(collapsed: bool) -> None:
+        was_collapsed = bool(getattr(sidebar, "_collapsed", False))
+        if collapsed and not was_collapsed:
+            sidebar._expanded_width = max(sidebar.width(), 280)
+        scroll.setVisible(not collapsed)
+        sidebar._collapsed = bool(collapsed)
+        toggle_button.setText(">" if collapsed else "<")
+        if collapsed:
+            sidebar.setMinimumWidth(34)
+            sidebar.setMaximumWidth(34)
+        else:
+            sidebar.setMinimumWidth(280)
+            sidebar.setMaximumWidth(420)
+        sizes = splitter.sizes()
+        total = sum(sizes) if sizes else 1690
+        left_width = 34 if collapsed else int(getattr(sidebar, "_expanded_width", 320))
+        right_width = sizes[2] if len(sizes) >= 3 and sizes[2] > 0 else 420
+        center_width = max(total - left_width - right_width, 480)
+        splitter.setSizes([left_width, center_width, right_width])
+
+    def toggle_sidebar() -> None:
+        set_sidebar_collapsed(not bool(getattr(sidebar, "_collapsed", False)))
+
+    toggle_button.clicked.connect(toggle_sidebar)
+    shortcut = QShortcut(QKeySequence("Ctrl+B"), window)
+    shortcut.activated.connect(toggle_sidebar)
+    window.esc_sidebar_shortcut = shortcut
+    window.toggle_demo_sidebar = toggle_sidebar
+
+    if legacy_central is not None:
+        legacy_central.setParent(root)
+        window.esc_legacy_central = legacy_central
+
+    root.setStyleSheet(
+        """
+        #escDemoRoot { background: #101418; color: #f2f5f8; }
+        #escHeader, #escCard, #escCenterCard, #escSidebar {
+            background: #171d23;
+            border: 1px solid #2c3640;
+            border-radius: 8px;
+        }
+        #escHeaderTitle {
+            color: #f2f5f8;
+            font-size: 18px;
+            font-weight: 700;
+        }
+        #escHeaderSubtitle, #escPlaceholder {
+            color: #aab4be;
+            font-size: 12px;
+        }
+        #escLogoFallback {
+            color: #f2f5f8;
+            font-weight: 700;
+            border: 1px solid #2c3640;
+            border-radius: 6px;
+            padding: 8px;
+        }
+        #escCardTitle {
+            color: #f2f5f8;
+            font-size: 14px;
+            font-weight: 700;
+        }
+        #escSidebarToggle {
+            background: #22303a;
+            color: #f2f5f8;
+            border: 0;
+            border-right: 1px solid #2c3640;
+            font-weight: 700;
+        }
+        #escSidebarToggle:hover { background: #2c4050; }
+        #escSidebarScroll { background: transparent; border: 0; }
+        #escSidebarContent { background: transparent; }
+        """
+    )
+
+    window.central = root
+    window.esc_demo_root = root
+    window.esc_demo_splitter = splitter
+    window.setCentralWidget(root)
+    set_sidebar_collapsed(bool(args.ui_sidebar_collapsed))
+    debug_print(debug, "ESC LAB demo dashboard layout applied")
+
+
 def attach_rgb_panel(window, args: argparse.Namespace, debug: bool):
     if not args.enable_rgb_panel:
         debug_print(debug, "RGB panel disabled")
@@ -2288,7 +2652,20 @@ def attach_rgb_panel(window, args: argparse.Namespace, debug: bool):
         video_fps=args.rgb_video_fps,
         video_codec=args.rgb_video_codec,
         video_max_queue=args.rgb_video_max_queue,
+        show_debug_status=args.ui_show_debug_status,
     )
+    if args.ui_demo_layout:
+        window.rgb_camera_panel = panel
+        atexit.register(panel.stop)
+        debug_print(
+            debug,
+            "RGB panel created for ESC LAB demo dashboard "
+            f"(source={args.rgb_source}, backend={args.rgb_camera_backend})",
+        )
+        if args.rgb_record_video:
+            debug_print(debug, f"RGB annotated video output: {video_output}")
+        return panel
+
     splitter = QSplitter(Qt.Horizontal)
     window.gridLayout.removeWidget(window.demoTabs)
     splitter.addWidget(window.demoTabs)
@@ -2317,6 +2694,9 @@ def attach_combined_status_panel(rgb_panel, args: argparse.Namespace, debug: boo
         return None
     if rgb_panel is None:
         debug_print(debug, "combined status panel requested, but RGB panel is not enabled")
+        return None
+    if args.ui_demo_layout and not args.ui_show_debug_status:
+        debug_print(debug, "combined status panel hidden in demo layout; use --ui-show-debug-status to show it")
         return None
 
     try:
@@ -2492,11 +2872,13 @@ def main() -> int:
 
     screen = app.primaryScreen()
     size = screen.size() if screen is not None else []
-    window = Window(size=size, title="Industrial Visualizer - TI Style (Vendored)")
+    window = Window(size=size, title=ESC_LAB_TITLE)
+    apply_esc_lab_branding(window, args.debug)
     configure_window(window, args, demo_name, args.debug)
     attach_pose_manager(window, pose_manager, args, args.debug)
     rgb_panel = attach_rgb_panel(window, args, args.debug)
     status_panel = attach_combined_status_panel(rgb_panel, args, args.debug)
+    apply_demo_dashboard_layout(window, rgb_panel, args, args.debug)
     attach_combined_rgb_logging(rgb_panel, combined_logger, status_panel, args, args.debug)
     attach_rgb_video_event_logging(rgb_panel, combined_logger, args, args.debug)
     attach_combined_mmwave_logging(window, combined_logger, status_panel, args.debug)

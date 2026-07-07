@@ -1114,6 +1114,7 @@ class RgbCameraPanel(QWidget):
         video_fps: float = 0,
         video_codec: str = "mp4v",
         video_max_queue: int = 120,
+        show_debug_status: bool = False,
         parent: Optional[QWidget] = None,
     ) -> None:
         super().__init__(parent)
@@ -1137,12 +1138,16 @@ class RgbCameraPanel(QWidget):
         self.video_fps = video_fps
         self.video_codec = video_codec
         self.video_max_queue = video_max_queue
+        self.show_debug_status = bool(show_debug_status)
         self._last_image: Optional[QImage] = None
         self._thread: Optional[QThread] = None
         self._worker: Optional[QObject] = None
+        self._camera_info: dict[str, object] = {}
+        self._recording_active = False
 
-        title = "RGB Posture" if posture_enabled else "RGB Camera"
-        self.title_label = QLabel(f"{title} - source={self.source}")
+        title = "RGB Posture" if posture_enabled and self.show_debug_status else "RGB Camera"
+        title_text = f"{title} - source={self.source}" if self.show_debug_status else title
+        self.title_label = QLabel(title_text)
         self.title_label.setAlignment(Qt.AlignCenter)
         self.title_label.setStyleSheet("font-weight: 600; font-size: 14px;")
 
@@ -1154,7 +1159,7 @@ class RgbCameraPanel(QWidget):
             "QLabel { background-color: #111111; color: #dddddd; border: 1px solid #333333; }"
         )
 
-        self.status_label = QLabel("Starting RGB posture..." if posture_enabled else "Starting RGB camera...")
+        self.status_label = QLabel(self._compact_status_text(starting=True))
         self.status_label.setAlignment(Qt.AlignCenter)
         self.status_label.setWordWrap(True)
 
@@ -1245,16 +1250,27 @@ class RgbCameraPanel(QWidget):
     def _on_frame(self, image: QImage) -> None:
         self._last_image = image
         self._render_last_image()
+        if not self.show_debug_status:
+            self._set_compact_status()
 
     @Slot(str)
     def _on_status(self, message: str) -> None:
         print(f"[rgb-panel] {message}", flush=True)
-        self.status_label.setText(message)
         lower_message = message.lower()
-        if self._last_image is None and any(
+        is_error = any(
             marker in lower_message
             for marker in ("could not", "unavailable", "error", "failed", "missing")
-        ):
+        )
+        if "rgb video: recording" in lower_message:
+            self._recording_active = True
+        if "recording disabled" in lower_message or "recording stopped" in lower_message:
+            self._recording_active = False
+
+        if self.show_debug_status or is_error:
+            self.status_label.setText(message)
+        else:
+            self._set_compact_status()
+        if self._last_image is None and is_error:
             self.image_label.setText(message)
 
     @Slot(dict)
@@ -1263,12 +1279,46 @@ class RgbCameraPanel(QWidget):
 
     @Slot(str, dict)
     def _on_video_event(self, event_type: str, payload: dict) -> None:
+        if event_type == "rgb_camera_selected":
+            self._camera_info = dict(payload or {})
+        elif event_type == "rgb_video_recording_started":
+            self._recording_active = True
+        elif event_type in ("rgb_video_recording_failed", "rgb_video_recording_stopped"):
+            self._recording_active = False
+        if not self.show_debug_status:
+            self._set_compact_status()
         self.videoEvent.emit(event_type, payload)
 
     @Slot()
     def _on_thread_finished(self) -> None:
         self._thread = None
         self._worker = None
+
+    def _compact_status_text(self, starting: bool = False) -> str:
+        source = self._camera_info.get("resolved_source") or self._camera_info.get("source") or self.source
+        if starting:
+            return f"Camera: source {source} | starting"
+
+        if self._camera_info and not self._camera_info.get("opened"):
+            return f"Camera: source {source} | unavailable"
+
+        parts = [f"source {source}"]
+        width = int(self._camera_info.get("width") or 0)
+        height = int(self._camera_info.get("height") or 0)
+        if width and height:
+            parts.append(f"{width}x{height}")
+        if self.posture_enabled:
+            if self.show_skeleton:
+                parts.append("skeleton on")
+            if self.show_detected:
+                parts.append("boxes on")
+        parts.append("recording" if self._recording_active else "not recording")
+        return "Camera: " + " | ".join(parts)
+
+    def _set_compact_status(self) -> None:
+        text = self._compact_status_text()
+        if self.status_label.text() != text:
+            self.status_label.setText(text)
 
     def _render_last_image(self) -> None:
         if self._last_image is None:
