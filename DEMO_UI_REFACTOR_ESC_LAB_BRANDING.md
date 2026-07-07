@@ -109,16 +109,18 @@ Live COM6/COM7 hardware validation was not run as part of this static pass.
 
 ## 10. Final Git Status
 
-Observed pending changes after this refactor:
+Implementation files included in the refactor commit:
 
 ```text
- M rgb_camera_panel.py
- M run_ti_style_visualizer.py
-?? DEMO_UI_REFACTOR_ESC_LAB_BRANDING.md
-?? ui_assets/
+rgb_camera_panel.py
+run_ti_style_visualizer.py
+DEMO_UI_REFACTOR_ESC_LAB_BRANDING.md
+ui_assets/embedded_sensing_and_computing_lab_logo.jpg
 ```
 
 Generated `.pyc` files from validation were reverted.
+
+After commit/push, `git status --short` is expected to be clean.
 
 ## 11. Exact Command To Run
 
